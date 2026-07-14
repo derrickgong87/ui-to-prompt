@@ -19,6 +19,8 @@ test('serves the product and reports a machine-readable health boundary', async 
     const page = await fetch(`${baseUrl}/`);
     assert.equal(page.status, 200);
     assert.match(page.headers.get('content-type'), /text\/html/);
+    assert.match(page.headers.get('content-security-policy'), /style-src-attr 'unsafe-inline'/);
+    assert.doesNotMatch(page.headers.get('content-security-policy'), /style-src 'self' 'unsafe-inline'/);
     assert.match(await page.text(), /UItoPrompt/);
 
     const health = await fetch(`${baseUrl}/api/health`);

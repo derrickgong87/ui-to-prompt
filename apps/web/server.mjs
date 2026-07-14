@@ -26,7 +26,7 @@ function securityHeaders(contentType) {
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
     'cross-origin-resource-policy': 'same-origin',
-    'content-security-policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+    'content-security-policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; style-src-attr 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
   };
 }
 

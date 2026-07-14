@@ -82,8 +82,24 @@ test('sample payload separates evidence classes and exposes complete prompt sect
 
   assert.equal(sample.meta.sourceType, 'url');
   assert.deepEqual(Object.keys(sample.evidenceSummary), ['observed', 'computed', 'inferred', 'unknown']);
-  assert.ok(sample.promptSections.length >= 10);
-  assert.ok(sample.promptSections.some((section) => section.id === 'acceptance-tests'));
+  assert.deepEqual(Array.from(sample.promptSections, (section) => section.title), [
+    'Mission and scope',
+    'Authority and rights boundary',
+    'Source-of-truth order',
+    'Visual north star',
+    'Non-negotiable invariants',
+    'Design tokens',
+    'Layout and responsive behavior',
+    'Component grammar',
+    'Content density and imagery',
+    'Interaction and motion',
+    'Accessibility and performance',
+    'Negative constraints',
+    'Unknown-handling rules',
+    'Acceptance checklist',
+    'Iteration protocol',
+  ]);
+  assert.ok(sample.promptSections.some((section) => section.id === 'acceptance-checklist'));
   assert.ok(sample.promptSections.every((section) => section.evidenceType));
 });
 
@@ -97,7 +113,7 @@ test('export helpers create portable JSON, Markdown and CSS artifacts', () => {
 
   const markdown = app.createExport('markdown', sample);
   assert.match(markdown, /^# UItoPrompt Style Skill/m);
-  assert.match(markdown, /## Acceptance tests/);
+  assert.match(markdown, /## Acceptance checklist/);
   assert.match(markdown, /Evidence: Observed/);
 
   const css = app.createExport('css', sample);
