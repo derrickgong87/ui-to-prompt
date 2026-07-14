@@ -103,7 +103,7 @@ test('Gemini image analysis sends an inline image to the stable server SDK path 
   });
   assert.deepEqual(calls[0].config.httpOptions, {
     timeout: 20_000,
-    retryOptions: { attempts: 1 },
+    retryOptions: { attempts: 3 },
   });
   assert.equal(calls[0].config.abortSignal.aborted, false);
 });

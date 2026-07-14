@@ -171,7 +171,7 @@ export async function analyzeGeminiImage({
         thinkingConfig: { thinkingLevel: 'low' },
         httpOptions: {
           timeout: providerTimeoutMs,
-          retryOptions: { attempts: 1 },
+          retryOptions: { attempts: 3 },
         },
         abortSignal: AbortSignal.timeout(providerTimeoutMs),
       },
