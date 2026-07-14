@@ -1,6 +1,6 @@
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 const DEFAULT_GEMINI_TIMEOUT_MS = 30_000;
-const DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const DEFAULT_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_PIXELS = 20_000_000;
 
 function positiveInteger(value, fallback, name) {

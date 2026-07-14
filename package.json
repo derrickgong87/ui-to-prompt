@@ -25,7 +25,8 @@
     "test": "node --test",
     "test:skill": "python tests/test_skill_scripts.py -v",
     "verify": "npm test && npm run test:skill",
-    "package:review": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1"
+    "package:review": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1",
+    "vercel-build": "node scripts/build-vercel.mjs"
   },
   "keywords": [
     "systematic-prompt",

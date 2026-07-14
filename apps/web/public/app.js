@@ -610,7 +610,7 @@ ${colorLines}
 
   async function inspectImageFile(file) {
     if (!file || typeof file.size !== 'number') throw new Error('请选择可读取的图片文件。');
-    if (file.size > 8 * 1024 * 1024) throw new Error('图片超过 8MB，请先压缩后再分析。');
+    if (file.size > 3 * 1024 * 1024) throw new Error('图片超过 3MB，请先压缩后再分析。');
     if (typeof root.createImageBitmap !== 'function') throw new Error('当前浏览器不支持本地图片分析。');
     const declaredDimensions = await readImageDimensions(file);
     if (declaredDimensions.width * declaredDimensions.height > 20_000_000) {

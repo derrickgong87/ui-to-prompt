@@ -33,7 +33,7 @@ Use the Cloud Run staging hostname with a staging `PUBLIC_APP_ORIGIN`, then veri
 
 - `GET /api/health` returns 200.
 - A same-origin consented image returns a validated StyleSpec with no API key in the response or static assets.
-- Missing origin, foreign origin, invalid MIME/magic bytes, files above 8 MiB, images above 20 MP, missing key, timeout, and malformed model JSON all return the expected sanitized status.
+- Missing origin, foreign origin, invalid MIME/magic bytes, files above 3 MiB, images above 20 MP, missing key, timeout, and malformed model JSON all return the expected sanitized status.
 - URL capture returns a transparent 503 boundary while the worker is not present.
 - WAF/rate-limit/human-verification telemetry is receiving and blocking test traffic.
 
