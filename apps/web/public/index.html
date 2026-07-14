@@ -71,7 +71,7 @@
                 <span class="section-number">CAPTURE / 01</span>
                 <h2>提供一个视觉起点</h2>
               </div>
-              <span class="privacy-note">本地文件不会离开此页面</span>
+              <span class="privacy-note">图片仅为本次 Gemini 分析发送，不写入项目库</span>
             </div>
 
             <div class="source-tabs" role="tablist" aria-label="选择来源类型">
@@ -153,6 +153,11 @@
               <input class="visually-hidden" id="visual-file" type="file" accept="image/png,image/jpeg,image/webp" />
               <output class="file-name" data-file-name="visual-file">尚未选择文件</output>
             </div>
+
+            <label class="ai-consent" id="ai-consent-row" for="ai-analysis-consent" hidden>
+              <input id="ai-analysis-consent" type="checkbox" />
+              <span>我确认有权提交这张图片，并同意将它仅用于本次 Gemini 风格分析。</span>
+            </label>
 
             <fieldset class="mode-fieldset">
               <legend>这套规则将如何使用？</legend>

@@ -98,6 +98,15 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function rgbToHex(value) {
     const text = String(value || '').trim().toLowerCase();
     if (/^#[0-9a-f]{6}$/.test(text)) return text;
@@ -328,6 +337,75 @@
     });
   }
 
+  function buildGeminiImageDataset(result, image, sample, options = {}) {
+    const data = buildImageDataset(image, sample, options);
+    const spec = result?.styleSpec;
+    if (!spec?.metadata?.title || !spec?.sections || typeof result?.summary !== 'string') {
+      throw new Error('服务端没有返回可用的风格分析结果。');
+    }
+
+    const sourceByPrompt = {
+      'mission-scope': 'visualIntent',
+      'authority-rights': 'constraints',
+      'source-truth-order': 'constraints',
+      'visual-north-star': 'visualIntent',
+      'non-negotiables': 'constraints',
+      'design-tokens': 'color',
+      'layout-responsive': 'layout',
+      'component-grammar': 'components',
+      'content-imagery': 'imagery',
+      'interaction-motion': 'motion',
+      accessibility: 'accessibility',
+      'negative-constraints': 'constraints',
+      'unknown-handling': 'responsiveness',
+      'acceptance-checklist': 'spacing',
+      'iteration-protocol': 'interactions',
+    };
+    const pick = (name) => spec.sections[name]?.summary || '';
+    data.meta = {
+      ...data.meta,
+      title: spec.metadata.title,
+      sourceLabel: options.sourceType === 'visual' ? '视觉参考 · Gemini 图像分析' : '界面截图 · Gemini 图像分析',
+      generator: 'UItoPrompt Gemini image analysis 1.0',
+    };
+    data.evidenceSummary.inferred = {
+      count: Object.keys(spec.sections).length,
+      label: '视觉模型推断',
+      detail: 'Gemini 仅根据本次提交的单张图片提炼规则；实现前仍需验证。',
+    };
+    data.brief = {
+      ...data.brief,
+      northStar: result.summary,
+      intent: pick('visualIntent'),
+      invariants: [pick('layout'), pick('typography'), pick('components'), pick('constraints')].filter(Boolean),
+      limits: [
+        '模型只看到单张静态图片，不能证明 DOM、字体文件、真实断点、隐藏状态或交互行为。',
+        '请使用原创文案、Logo、图片与图标；不要复刻来源的身份性资产。',
+      ],
+    };
+    data.promptSections = data.promptSections.map((section) => {
+      const modelSection = pick(sourceByPrompt[section.id]);
+      return modelSection
+        ? {
+          ...section,
+          evidenceType: 'Inferred',
+          confidence: 'medium',
+          content: `${section.content}\n\n视觉模型建议（基于单图推断，需验证）：${modelSection}`,
+        }
+        : section;
+    });
+    data.validation = {
+      ...data.validation,
+      note: '颜色与尺寸来自本地像素；结构建议来自 Gemini 的单图推断，不能替代 DOM、断点和交互验证。',
+      checks: [
+        ...data.validation.checks.slice(0, 2),
+        { label: '视觉模型规则', status: 'review', detail: '15 个章节已按单图推断标记' },
+        { label: '权利边界', status: 'pass', detail: options.mode === 'style' ? '不复用来源身份资产' : '需确认授权范围' },
+      ],
+    };
+    return data;
+  }
+
   function createMarkdown(data) {
     const sections = data.promptSections
       .map(
@@ -532,16 +610,16 @@ ${colorLines}
 
   async function inspectImageFile(file) {
     if (!file || typeof file.size !== 'number') throw new Error('请选择可读取的图片文件。');
-    if (file.size > 20 * 1024 * 1024) throw new Error('图片超过 20MB，请先压缩后再分析。');
+    if (file.size > 8 * 1024 * 1024) throw new Error('图片超过 8MB，请先压缩后再分析。');
     if (typeof root.createImageBitmap !== 'function') throw new Error('当前浏览器不支持本地图片分析。');
     const declaredDimensions = await readImageDimensions(file);
-    if (declaredDimensions.width * declaredDimensions.height > 40_000_000) {
-      throw new Error('图片像素超过 4000 万，请先缩小后再分析。');
+    if (declaredDimensions.width * declaredDimensions.height > 20_000_000) {
+      throw new Error('图片像素超过 2000 万，请先缩小后再分析。');
     }
     const bitmap = await root.createImageBitmap(file);
     try {
       if (!bitmap.width || !bitmap.height) throw new Error('图片尺寸无效。');
-      if (bitmap.width * bitmap.height > 40_000_000) throw new Error('图片像素超过 4000 万，请先缩小后再分析。');
+      if (bitmap.width * bitmap.height > 20_000_000) throw new Error('图片像素超过 2000 万，请先缩小后再分析。');
       const longest = Math.max(bitmap.width, bitmap.height);
       const scale = Math.min(1, 192 / longest);
       const width = Math.max(1, Math.round(bitmap.width * scale));
@@ -568,6 +646,17 @@ ${colorLines}
     } finally {
       bitmap.close?.();
     }
+  }
+
+  async function imageFileToBase64(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    const chunkSize = 8192;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunkSize)));
+    }
+    if (typeof root.btoa !== 'function') throw new Error('当前浏览器无法安全编码图片。');
+    return root.btoa(binary);
   }
 
   function init() {
@@ -597,6 +686,8 @@ ${colorLines}
       $$('[data-source-panel]').forEach((panel) => {
         panel.hidden = panel.dataset.sourcePanel !== sourceType;
       });
+      const consentRow = $('#ai-consent-row');
+      if (consentRow) consentRow.hidden = sourceType === 'url';
       if (focusPanel) $(`[data-source-panel="${sourceType}"] input`)?.focus();
     }
 
@@ -682,6 +773,12 @@ ${colorLines}
         file.focus();
         return false;
       }
+      const consent = $('#ai-analysis-consent');
+      if (!consent?.checked) {
+        setStatus('请先确认你有权提交此图片，并同意仅为本次 Gemini 分析发送它。', 'error');
+        consent?.focus();
+        return false;
+      }
       currentData.meta.sourceType = activeSource;
       currentData.meta.sourceLabel = activeSource === 'visual' ? '视觉灵感图 · 本地文件' : '界面截图 · 本地文件';
       currentData.meta.sourceUrl = file.files[0].name;
@@ -714,7 +811,7 @@ ${colorLines}
           ? '正在载入完整示例分析。'
           : activeSource === 'url'
             ? '正在安全浏览公开网页并读取可见证据。'
-            : '正在浏览器本地读取像素；图片不会上传。',
+            : '正在读取本地像素，并将图片发送到服务端进行本次 Gemini 分析。',
         'neutral',
       );
       $('#analysis-panel').scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
@@ -740,7 +837,18 @@ ${colorLines}
           } else {
             const file = $(`#${activeSource}-file`).files[0];
             const evidence = await inspectImageFile(file);
-            currentData = buildImageDataset(evidence, sample, { sourceType: activeSource, filename: file.name, mode });
+            const response = await fetch('/api/analyze-image', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                image: { mimeType: file.type, base64: await imageFileToBase64(file) },
+                sourceName: file.name,
+                rightsMode: mode === 'rebuild' ? 'authorized-reconstruction' : 'style-only',
+              }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `图片分析失败（HTTP ${response.status}）。`);
+            currentData = buildGeminiImageDataset(payload, evidence, sample, { sourceType: activeSource, filename: file.name, mode });
           }
         } catch (error) {
           stageElements[0].dataset.state = 'error';
@@ -767,7 +875,8 @@ ${colorLines}
     }
 
     function evidenceChip(type) {
-      return `<span class="evidence-chip evidence-${type.toLowerCase()}">${type}</span>`;
+      const safeType = escapeHtml(type);
+      return `<span class="evidence-chip evidence-${safeType.toLowerCase()}">${safeType}</span>`;
     }
 
     function renderWorkspace(data) {
@@ -778,8 +887,8 @@ ${colorLines}
       $('#evidence-summary').innerHTML = Object.entries(data.evidenceSummary)
         .map(
           ([type, item]) => `<article class="evidence-stat evidence-stat-${type}">
-            <span class="evidence-stat-count">${item.count}</span>
-            <div><strong>${item.label}</strong><small>${item.detail}</small></div>
+            <span class="evidence-stat-count">${escapeHtml(item.count)}</span>
+            <div><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail)}</small></div>
             ${evidenceChip(evidenceLabels[type])}
           </article>`,
         )
@@ -788,21 +897,21 @@ ${colorLines}
       $('#north-star').textContent = data.brief.northStar;
       $('#brief-intent').textContent = data.brief.intent;
       $('#invariant-list').innerHTML = data.brief.invariants
-        .map((item, index) => `<li><span>${String(index + 1).padStart(2, '0')}</span>${item}</li>`)
+        .map((item, index) => `<li><span>${String(index + 1).padStart(2, '0')}</span>${escapeHtml(item)}</li>`)
         .join('');
-      $('#limit-list').innerHTML = data.brief.limits.map((item) => `<li>${item}</li>`).join('');
+      $('#limit-list').innerHTML = data.brief.limits.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
 
       $('#color-tokens').innerHTML = Object.entries(data.tokens.colors)
         .map(
           ([name, value]) => `<li class="token-row">
-            <span class="token-swatch" style="--swatch:${value}" aria-hidden="true"></span>
-            <span><strong>${name}</strong><small>${value}</small></span>
+            <span class="token-swatch" style="--swatch:${escapeHtml(value)}" aria-hidden="true"></span>
+            <span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(value)}</small></span>
           </li>`,
         )
         .join('');
       $('#type-tokens').innerHTML = Object.entries(data.tokens.typography)
         .filter(([name]) => name !== 'scale')
-        .map(([name, value]) => `<li><span>${name}</span><strong>${value}</strong></li>`)
+        .map(([name, value]) => `<li><span>${escapeHtml(name)}</span><strong>${escapeHtml(value)}</strong></li>`)
         .join('');
       $('#spacing-tokens').innerHTML = data.tokens.spacing.scale
         .map((value) => `<span class="space-block" style="--space:${Math.max(Number(value), 4)}px"><i></i><small>${value}</small></span>`)
@@ -814,12 +923,12 @@ ${colorLines}
           (section, index) => `<details class="prompt-section" ${index < 2 ? 'open' : ''}>
             <summary>
               <span class="prompt-index">${String(index + 1).padStart(2, '0')}</span>
-              <span class="prompt-heading"><strong>${section.title}</strong><small>${section.confidence} confidence</small></span>
+              <span class="prompt-heading"><strong>${escapeHtml(section.title)}</strong><small>${escapeHtml(section.confidence)} confidence</small></span>
               ${evidenceChip(section.evidenceType)}
             </summary>
             <div class="prompt-section-body">
-              <p>${section.content}</p>
-              <div class="section-actions"><button type="button" class="text-button" data-copy-section="${section.id}">复制本段</button><span>来源与置信度保持可见</span></div>
+              <p>${escapeHtml(section.content)}</p>
+              <div class="section-actions"><button type="button" class="text-button" data-copy-section="${escapeHtml(section.id)}">复制本段</button><span>来源与置信度保持可见</span></div>
             </div>
           </details>`,
         )
@@ -829,7 +938,7 @@ ${colorLines}
         .map(
           (check) => `<li data-status="${check.status}"><span class="check-mark" aria-hidden="true">${
             check.status === 'pass' ? '✓' : '!'
-          }</span><span><strong>${check.label}</strong><small>${check.detail}</small></span></li>`,
+          }</span><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`,
         )
         .join('');
       $('#validation-note').textContent = data.validation.note;
@@ -1062,12 +1171,15 @@ ${colorLines}
   }
 
   return {
+    buildGeminiImageDataset,
     buildImageDataset,
     buildUrlDataset,
     comparisonPosition,
     createAnalysisStages,
     createExport,
+    escapeHtml,
     inspectImageFile,
+    imageFileToBase64,
     init,
     modeNotice,
     parseImageDimensions,

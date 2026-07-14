@@ -42,3 +42,18 @@ test('launch copy starts with a human design-reference scenario', () => {
   assert.match(promo, /uitoprompt\.com/);
   assert.doesNotMatch(promo, /审核后上线/);
 });
+
+test('production artifacts keep Gemini secret server-side and URL capture disabled by default', () => {
+  const dockerfile = readFileSync(join(root, 'Dockerfile'), 'utf8');
+  const envExample = readFileSync(join(root, '.env.example'), 'utf8');
+  const manifest = readFileSync(join(root, 'deploy', 'cloudrun', 'public-service.yaml'), 'utf8');
+  const runbook = readFileSync(join(root, 'deploy', 'README.md'), 'utf8');
+
+  assert.match(dockerfile, /USER node/);
+  assert.match(dockerfile, /HOST=0\.0\.0\.0/);
+  assert.match(dockerfile, /URL_ANALYSIS_ENABLED=false/);
+  assert.match(envExample, /^GEMINI_API_KEY=$/m);
+  assert.match(manifest, /secretKeyRef:[\s\S]*?name: GEMINI_API_KEY/);
+  assert.match(manifest, /URL_ANALYSIS_ENABLED[\s\S]*?value: "false"/);
+  assert.match(runbook, /Do not turn on `URL_ANALYSIS_ENABLED`/);
+});

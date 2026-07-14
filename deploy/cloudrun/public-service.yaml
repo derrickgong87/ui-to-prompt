@@ -1,0 +1,40 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: uitoprompt
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        autoscaling.knative.dev/maxScale: "4"
+    spec:
+      containerConcurrency: 4
+      timeoutSeconds: 35
+      serviceAccountName: uitoprompt-public@PROJECT_ID.iam.gserviceaccount.com
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/uitoprompt/web:TAG
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PUBLIC_APP_ORIGIN
+              value: https://uitoprompt.com
+            - name: URL_ANALYSIS_ENABLED
+              value: "false"
+            - name: GEMINI_MODEL
+              value: gemini-3.5-flash
+            - name: GEMINI_TIMEOUT_MS
+              value: "30000"
+            - name: MAX_IMAGE_BYTES
+              value: "8388608"
+            - name: MAX_IMAGE_PIXELS
+              value: "20000000"
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: GEMINI_API_KEY
+                  key: latest

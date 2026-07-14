@@ -82,7 +82,7 @@ Public URL / screenshot / visual reference
 ### 1. Collect evidence
 
 - **URL mode** can collect DOM roles, computed styles, visible geometry, fonts, resources, and viewport behavior from a disposable browser context.
-- **Image mode** analyzes pixels locally for palette, composition, density, contrast, hierarchy, and shape language.
+- **Image mode** performs local pixel preflight for palette and dimensions; in the web app, a user-consented image can then be analyzed by Gemini server-side for a bounded visual-system interpretation.
 - **General visual mode** translates non-UI characteristics—rhythm, contrast, color, composition, and texture—into original interface rules.
 
 ### 2. Synthesize a StyleSpec
@@ -108,7 +108,7 @@ Validation checks unsupported claims, invalid confidence values, missing evidenc
 | Prompt output | Deterministic 15-section Systematic Prompt plus concise use-now prompt |
 | Portable output | CSS variables, evidence report, reusable generated Skill |
 | Rights controls | Style-only default and explicit authorized-reconstruction mode |
-| Safety | URL validation, redirect/request revalidation, local image analysis, bounded inputs |
+| Safety | URL validation, redirect/request revalidation, explicit image consent, verified image bytes, bounded inputs, server-only Gemini key |
 | Review app | Browser UI for URL/image input, evidence review, example exploration, and downloads |
 
 ## Rights modes
@@ -143,10 +143,12 @@ npm start
 
 Open [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
+To enable Gemini image analysis locally, set `GEMINI_API_KEY` in your shell before starting the server. Do not put a real key in a committed `.env` file. See [`.env.example`](./.env.example) and the [production runbook](./deploy/README.md).
+
 The review app offers three useful paths:
 
 1. Paste a public URL and collect browser-backed evidence.
-2. Upload a screenshot and analyze it locally in the browser.
+2. Upload a screenshot, review its local preflight, then explicitly consent before Gemini turns the image into a clearly-labelled single-image inference.
 3. Choose **View full example** to inspect a complete precompiled result immediately.
 
 ## Install the AI Skill
@@ -279,7 +281,7 @@ User-supplied webpages are hostile input. UItoPrompt therefore:
 - does not import your browser profile, cookies, credentials, local files, or form values;
 - treats page text, scripts, comments, labels, and metadata as untrusted evidence—not instructions;
 - blocks form submissions, downloads, payments, and destructive side effects;
-- analyzes uploaded images locally and applies bounded file and pixel limits.
+- performs local image preflight, then sends an image to Gemini only after explicit consent; the server verifies type, magic bytes, byte and pixel limits and never returns the key.
 
 Read [`SECURITY.md`](./SECURITY.md) before exposing URL capture to untrusted users.
 
@@ -346,7 +348,7 @@ No honest prompt extractor can promise that from one reference. UItoPrompt expos
 <details>
 <summary><strong>Does image analysis upload my screenshot?</strong></summary>
 
-The review app analyzes local images in the browser. The Python Skill script reads the path you explicitly provide. Do not provide screenshots containing secrets or personal data unless your environment and workflow are appropriate for them.
+The browser performs local preflight first. When you tick the consent box in the web app, the image is sent to the server solely for that Gemini analysis; it is not written to the project store. The Python Skill script reads only the path you explicitly provide. Do not submit screenshots containing secrets or personal data.
 </details>
 
 <details>

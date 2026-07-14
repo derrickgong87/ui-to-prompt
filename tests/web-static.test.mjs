@@ -230,17 +230,50 @@ test('image evidence keeps pixel facts and makes hidden implementation details u
 });
 
 test('analysis runtime reads URL and image inputs and rejects CSS token injection', async () => {
-  const appSource = await source('app.js');
+  const [appSource, html] = await Promise.all([source('app.js'), source('index.html')]);
   const app = loadClassicScript('app.js');
   const sample = loadClassicScript('sample-data.js');
 
   assert.match(appSource, /fetch\(['"]\/api\/analyze-url/);
+  assert.match(appSource, /fetch\(['"]\/api\/analyze-image/);
+  assert.match(appSource, /imageFileToBase64/);
   assert.match(appSource, /createImageBitmap/);
   assert.match(appSource, /getImageData/);
+  assert.match(html, /id="ai-analysis-consent"/);
+  assert.doesNotMatch(html, /本地文件不会离开此页面/);
 
   const hostile = JSON.parse(JSON.stringify(sample));
   hostile.tokens.colors.canvas = 'red; } body { display:none }';
   assert.throws(() => app.createExport('css', hostile), /Unsafe CSS token/);
+});
+
+test('Gemini image output is labelled as a single-image inference before it enters the systematic prompt', () => {
+  const app = loadClassicScript('app.js');
+  const sample = loadClassicScript('sample-data.js');
+  const sections = Object.fromEntries([
+    'visualIntent', 'layout', 'color', 'typography', 'spacing', 'surfaces', 'components', 'imagery', 'iconography', 'responsiveness', 'interactions', 'motion', 'accessibility', 'content', 'constraints',
+  ].map((name) => [name, { summary: `${name} guidance` }]));
+
+  const result = app.buildGeminiImageDataset(
+    { styleSpec: { metadata: { title: 'Model visual direction' }, sections }, summary: 'A clear north star.' },
+    { width: 1600, height: 1000, colors: ['#efece3', '#171816', '#3157f5'] },
+    sample,
+    { sourceType: 'screenshot', filename: 'screen.png', mode: 'style' },
+  );
+
+  assert.equal(result.meta.title, 'Model visual direction');
+  assert.equal(result.evidenceSummary.inferred.label, '视觉模型推断');
+  assert.match(result.promptSections.find((section) => section.id === 'design-tokens').content, /color guidance/);
+  assert.match(result.brief.limits.join(' '), /单张静态图片/);
+});
+
+test('model-derived text is HTML escaped before the workspace uses innerHTML', async () => {
+  const app = loadClassicScript('app.js');
+  const appSource = await source('app.js');
+
+  assert.equal(app.escapeHtml('<img src=x onerror=alert(1)>'), '&lt;img src=x onerror=alert(1)&gt;');
+  assert.match(appSource, /<p>\$\{escapeHtml\(section\.content\)\}<\/p>/);
+  assert.match(appSource, /\$\{escapeHtml\(item\)\}/);
 });
 
 test('mobile result navigation exposes StyleSpec, centers the active tab and keeps 44px targets', async () => {

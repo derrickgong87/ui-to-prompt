@@ -509,6 +509,27 @@ canvas {
   font-weight: 650;
 }
 
+.ai-consent {
+  margin-top: 18px;
+  padding: 12px 0;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  align-items: start;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.ai-consent input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: var(--cobalt);
+}
+
 .source-tabs {
   margin-top: 24px;
   display: grid;
