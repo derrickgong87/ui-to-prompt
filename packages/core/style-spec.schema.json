@@ -83,7 +83,13 @@
   "$defs": {
     "tokenValue": {
       "oneOf": [
-        { "type": "string", "minLength": 1 },
+        {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "pattern": "[;{}\\u0000-\\u001F]|/\\*|\\*/|(?:[uU][rR][lL]|[eE][xX][pP][rR][eE][sS][sS][iI][oO][nN])\\s*\\(|@[iI][mM][pP][oO][rR][tT]"
+          }
+        },
         { "type": "number" },
         { "type": "null" }
       ]

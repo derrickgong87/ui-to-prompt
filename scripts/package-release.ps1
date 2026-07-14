@@ -15,6 +15,8 @@ if (-not $stage.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
 }
 
 $excludedSegments = @('.git', 'node_modules', 'coverage', 'tmp', 'captures', '__pycache__', '.pytest_cache')
+$sensitiveNames = @('.npmrc', '.netrc', 'id_rsa', 'id_ed25519', 'credentials.json', 'secrets.json')
+$sensitiveExtensions = @('.pem', '.key', '.pfx', '.p12')
 
 function Get-RelativePath {
     param(
@@ -38,15 +40,29 @@ function Test-IncludedFile {
     if ($name -eq '.env' -or $name.StartsWith('.env.', [StringComparison]::OrdinalIgnoreCase)) { return $false }
     if ($name.EndsWith('.log', [StringComparison]::OrdinalIgnoreCase)) { return $false }
     if ($name.EndsWith('.zip', [StringComparison]::OrdinalIgnoreCase)) { return $false }
+    if ($sensitiveNames -contains $name) { return $false }
+    if ($sensitiveExtensions -contains [IO.Path]::GetExtension($name)) { return $false }
     return $true
 }
 
 try {
     New-Item -ItemType Directory -Force -Path $stage, $outputDirectory | Out-Null
 
-    $files = Get-ChildItem -LiteralPath $repoRoot -Recurse -File | Where-Object {
-        $relative = Get-RelativePath -BasePath $repoRoot -FullPath $_.FullName
-        Test-IncludedFile -RelativePath $relative
+    $trackedPaths = @(& git -C $repoRoot -c core.quotepath=false ls-files --cached)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Packaging failed: unable to enumerate Git-tracked files.'
+    }
+
+    $files = foreach ($relative in $trackedPaths) {
+        if (-not (Test-IncludedFile -RelativePath $relative)) { continue }
+        $fullPath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relative))
+        if (-not $fullPath.StartsWith(($repoRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar), [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Packaging failed: tracked path escapes repository root: $relative"
+        }
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            throw "Packaging failed: tracked file is missing from the worktree: $relative"
+        }
+        Get-Item -LiteralPath $fullPath
     }
 
     foreach ($file in $files) {

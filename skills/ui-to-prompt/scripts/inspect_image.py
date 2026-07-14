@@ -8,25 +8,63 @@ import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image, ImageStat, UnidentifiedImageError
+from PIL import Image, ImageOps, ImageStat, UnidentifiedImageError
+
+
+MAX_IMAGE_BYTES = 25 * 1024 * 1024
+MAX_IMAGE_PIXELS = 40_000_000
 
 
 def rgb_to_hex(rgb: tuple[int, int, int]) -> str:
     return "#{:02X}{:02X}{:02X}".format(*rgb)
 
 
-def inspect_image(path: Path) -> dict:
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def inspect_image(
+    path: Path,
+    *,
+    max_bytes: int = MAX_IMAGE_BYTES,
+    max_pixels: int = MAX_IMAGE_PIXELS,
+) -> dict:
+    try:
+        file_bytes = path.stat().st_size
+    except OSError as error:
+        raise ValueError(f"Unable to read image: {error}") from error
+    if file_bytes > max_bytes:
+        raise ValueError(
+            f"Image exceeds the {max_bytes}-byte file-size limit ({file_bytes} bytes)."
+        )
+
     try:
         with Image.open(path) as source:
-            source.load()
             original_format = source.format or path.suffix.lstrip(".").upper()
-            image = source.convert("RGB")
-    except (FileNotFoundError, UnidentifiedImageError, OSError) as error:
+            width, height = source.size
+            pixels = width * height
+            if pixels > max_pixels:
+                raise ValueError(
+                    f"Image exceeds the {max_pixels}-pixel limit ({pixels} pixels)."
+                )
+            oriented = ImageOps.exif_transpose(source)
+            width, height = oriented.size
+            oriented.thumbnail((512, 512), Image.Resampling.LANCZOS, reducing_gap=3.0)
+            sample = oriented.convert("RGB")
+    except ValueError:
+        raise
+    except (
+        FileNotFoundError,
+        Image.DecompressionBombError,
+        UnidentifiedImageError,
+        OSError,
+    ) as error:
         raise ValueError(f"Unable to read image: {error}") from error
 
-    width, height = image.size
-    sample = image.copy()
-    sample.thumbnail((512, 512))
     quantized = sample.quantize(colors=8, method=Image.Quantize.MEDIANCUT).convert("RGB")
     color_counts = quantized.getcolors(maxcolors=sample.width * sample.height) or []
     total = max(1, sample.width * sample.height)
@@ -46,18 +84,17 @@ def inspect_image(path: Path) -> dict:
     stats = ImageStat.Stat(sample)
     mean = [round(value, 2) for value in stats.mean]
     luminance = round((0.2126 * mean[0] + 0.7152 * mean[1] + 0.0722 * mean[2]) / 255, 4)
-    raw = path.read_bytes()
 
     return {
         "schema_version": "1.0.0",
         "source": {
             "kind": "image",
-            "path": str(path.resolve()),
+            "path": path.name,
             "format": original_format,
             "width": width,
             "height": height,
             "aspect_ratio": round(width / height, 4) if height else None,
-            "sha256": hashlib.sha256(raw).hexdigest(),
+            "sha256": sha256_file(path),
         },
         "palette": palette,
         "composition": {

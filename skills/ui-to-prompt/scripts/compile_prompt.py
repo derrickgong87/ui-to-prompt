@@ -70,6 +70,14 @@ def flatten_tokens(tokens, prefix=""):
             yield name, value_of(value)
 
 
+def format_evidence(evidence):
+    items = []
+    for item in evidence or []:
+        note = f" — {item['note'].strip()}" if item.get("note", "").strip() else ""
+        items.append(f"[{item['label']}] {item['ref'].strip()}{note}")
+    return "; ".join(sorted(items)) if items else "None supplied; preserve this domain as unresolved."
+
+
 def format_domain(name, section):
     status = section.get("status", "unknown").upper()
     confidence = round(float(section.get("confidence", 0)) * 100)
@@ -77,6 +85,7 @@ def format_domain(name, section):
         f"### {name}",
         f"Status: {status}",
         f"Confidence: {confidence}%",
+        f"Evidence: {format_evidence(section.get('evidence', []))}",
         f"Directive: {section.get('summary', 'No directive recorded.')}",
     ]
     if section.get("status") == "unknown":
@@ -133,6 +142,9 @@ def css_name(name: str) -> str:
 
 
 def compile_css(spec: dict) -> str:
+    errors = validate_spec(spec)
+    if errors:
+        raise ValueError("Invalid StyleSpec: " + "; ".join(errors))
     lines = [":root {"]
     for name, value in flatten_tokens(spec.get("tokens", {})):
         if isinstance(value, (str, int, float)) and value != "":
@@ -141,9 +153,88 @@ def compile_css(spec: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def compile_use_now(spec: dict) -> str:
+    metadata = spec["metadata"]
+    domains = spec["sections"]
+    rights_mode = metadata["rightsMode"]
+    if rights_mode == "style-only":
+        rights_rule = (
+            "Extract visual grammar only. Exclude source logos, brand identifiers, "
+            "copy, proprietary imagery, restricted fonts, and protected assets."
+        )
+    else:
+        rights_rule = (
+            "The user asserts authority to reconstruct the reference. Reuse only material "
+            "covered by that authority and keep licensing assumptions explicit."
+        )
+
+    rule_order = [
+        "visualIntent", "color", "typography", "layout", "spacing", "surfaces",
+        "components", "imagery", "responsiveness", "interactions", "motion",
+        "accessibility", "content",
+    ]
+    rules = [
+        f"- {name} [{domains[name]['status']}, {round(domains[name]['confidence'] * 100)}%]: "
+        f"{domains[name]['summary']}"
+        for name in rule_order
+    ]
+    invariants = domains["visualIntent"].get("details", {}).get("invariants", [])
+    invariant_lines = [f"- {item}" for item in invariants] or [
+        "- Preserve every high-confidence observed or computed relationship."
+    ]
+    token_lines = [
+        f"- {name}: {value}" for name, value in list(flatten_tokens(spec["tokens"]))[:20]
+    ] or ["- No token values are available; keep token choices replaceable."]
+    unknowns = [
+        f"- {name}: {section['unknownReason']}"
+        for name, section in domains.items()
+        if section["status"] == "unknown"
+    ] or ["- No unknowns are recorded; do not create new source-specific claims without evidence."]
+
+    lines = [
+        "# Use now",
+        "",
+        f"Project: {metadata['title']}",
+        f"Source: {spec['source']['kind']} — {spec['source']['ref']}",
+        "",
+        "## Rights boundary",
+        "",
+        f"Rights mode: `{rights_mode}`. {rights_rule}",
+        "",
+        "## Non-negotiable invariants",
+        "",
+        *invariant_lines,
+        "",
+        "## Design rules",
+        "",
+        *rules,
+        "",
+        "## Design tokens",
+        "",
+        *token_lines,
+        "",
+        "## Negative constraints",
+        "",
+        f"- {domains['constraints']['summary']}",
+        "",
+        "## Unknowns",
+        "",
+        *unknowns,
+        "",
+        "## Verification",
+        "",
+        "- Implement from this rule set, then compare structure, typography, spacing, color roles, responsive behavior, focus, and motion separately.",
+        "- Fix StyleSpec-level causes before adding local patches, and report every remaining mismatch with its evidence boundary.",
+    ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def compile_evidence_report(spec: dict) -> str:
     metadata = spec.get("metadata", {})
     source = spec.get("source", {})
+    sections = spec.get("sections", {})
+    backed = sum(bool(section.get("evidence")) for section in sections.values())
+    unknown = sum(section.get("status") == "unknown" for section in sections.values())
     lines = [
         "# Evidence and uncertainty report",
         "",
@@ -151,18 +242,38 @@ def compile_evidence_report(spec: dict) -> str:
         f"- Source kind: {source.get('kind', 'unknown')}",
         f"- Rights mode: {metadata.get('rightsMode', 'style-only')}",
         f"- Source: {source.get('ref', 'not recorded')}",
+        f"- Evidence-backed sections: {backed}/{len(sections)}",
+        f"- Explicit unknown sections: {unknown}/{len(sections)}",
         "",
         "## Uncertainties",
         "",
         bullet_list(
-            [f"{name}: {section.get('unknownReason', 'No reason recorded')}" for name, section in spec.get("sections", {}).items() if section.get("status") == "unknown"],
+            [f"{name}: {section.get('unknownReason', 'No reason recorded')}" for name, section in sections.items() if section.get("status") == "unknown"],
             "No uncertainties were recorded.",
         ),
         "",
+        "## Evidence references",
+        "",
+    ]
+    for name, section in sections.items():
+        lines.extend(
+            [
+                f"### {name}",
+                "",
+                f"- Status: {section['status']}",
+                f"- Confidence: {round(section['confidence'] * 100)}%",
+                *[
+                    f"- {item}"
+                    for item in format_evidence(section.get("evidence", [])).split("; ")
+                ],
+                "",
+            ]
+        )
+    lines.extend([
         "## Evidence policy",
         "",
         "Observed and computed values outrank inferences. Unknown values must not be silently replaced with framework defaults.",
-    ]
+    ])
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -184,7 +295,7 @@ def main() -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     prompt = compile_prompt(spec)
     (args.output_dir / "systematic-prompt.md").write_text(prompt, encoding="utf-8")
-    use_now = "# Use now\n\n" + "\n".join(prompt.splitlines()[4:32]).strip() + "\n"
+    use_now = compile_use_now(spec)
     (args.output_dir / "use-now.md").write_text(use_now, encoding="utf-8")
     (args.output_dir / "variables.css").write_text(compile_css(spec), encoding="utf-8")
     (args.output_dir / "evidence-report.md").write_text(compile_evidence_report(spec), encoding="utf-8")

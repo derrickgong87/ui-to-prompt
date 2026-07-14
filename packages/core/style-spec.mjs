@@ -41,6 +41,19 @@ const VALID_EVIDENCE_LABELS = new Set([
   'derived',
 ]);
 
+const TOP_LEVEL_KEYS = new Set(['schemaVersion', 'metadata', 'source', 'tokens', 'sections']);
+const METADATA_KEYS = new Set(['title', 'rightsMode']);
+const SOURCE_KEYS = new Set(['kind', 'ref']);
+const SECTION_KEYS = new Set([
+  'status',
+  'confidence',
+  'evidence',
+  'summary',
+  'details',
+  'unknownReason',
+]);
+const EVIDENCE_KEYS = new Set(['label', 'ref', 'note']);
+
 const TOKEN_GROUPS = Object.freeze([
   'colors',
   'spacing',
@@ -71,6 +84,19 @@ function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function validateSupportedKeys(value, supported, path, errors) {
+  if (!isPlainObject(value)) return;
+  for (const key of Object.keys(value)) {
+    if (!supported.has(key)) {
+      errors.push(`${path ? `${path}.` : ''}${key} is not supported`);
+    }
+  }
+}
+
+function containsUnsafeCssSyntax(value) {
+  return /[;{}\u0000-\u001f]|\/\*|\*\/|(?:url|expression)\s*\(|@import/i.test(value);
+}
+
 function validateTokenMap(value, path, errors) {
   if (!isPlainObject(value)) {
     errors.push(`${path} must be an object`);
@@ -81,7 +107,12 @@ function validateTokenMap(value, path, errors) {
     const tokenPath = `${path}.${name}`;
     if (token === null) continue;
     if (typeof token === 'number' && Number.isFinite(token)) continue;
-    if (isNonEmptyString(token)) continue;
+    if (isNonEmptyString(token)) {
+      if (containsUnsafeCssSyntax(token)) {
+        errors.push(`${tokenPath} contains unsafe CSS syntax`);
+      }
+      continue;
+    }
     errors.push(`${tokenPath} must be a finite number, non-empty string, or null`);
   }
 }
@@ -145,6 +176,8 @@ function validateEvidence(items, path, status, errors) {
       return;
     }
 
+    validateSupportedKeys(item, EVIDENCE_KEYS, itemPath, errors);
+
     if (!isNonEmptyString(item.label)) {
       errors.push(`${itemPath}.label must be a non-empty evidence label`);
     } else if (!VALID_EVIDENCE_LABELS.has(item.label)) {
@@ -154,6 +187,10 @@ function validateEvidence(items, path, status, errors) {
     if (!isNonEmptyString(item.ref)) {
       errors.push(`${itemPath}.ref must be a non-empty evidence reference`);
     }
+
+    if (item.note !== undefined && typeof item.note !== 'string') {
+      errors.push(`${itemPath}.note must be a string when provided`);
+    }
   });
 }
 
@@ -162,6 +199,8 @@ function validateSection(section, path, errors) {
     errors.push(`${path} must be an object`);
     return;
   }
+
+  validateSupportedKeys(section, SECTION_KEYS, path, errors);
 
   if (!VALID_STATUSES.has(section.status)) {
     errors.push(`${path}.status must be observed, computed, inferred, translated, user, or unknown`);
@@ -202,6 +241,8 @@ export function validateStyleSpec(spec) {
     return { valid: false, errors: ['StyleSpec must be an object'] };
   }
 
+  validateSupportedKeys(spec, TOP_LEVEL_KEYS, '', errors);
+
   if (spec.schemaVersion !== STYLE_SPEC_VERSION) {
     errors.push(`schemaVersion must equal ${STYLE_SPEC_VERSION}`);
   }
@@ -209,6 +250,7 @@ export function validateStyleSpec(spec) {
   if (!isPlainObject(spec.metadata)) {
     errors.push('metadata is required and must be an object');
   } else {
+    validateSupportedKeys(spec.metadata, METADATA_KEYS, 'metadata', errors);
     if (!isNonEmptyString(spec.metadata.title)) {
       errors.push('metadata.title must be a non-empty string');
     }
@@ -220,6 +262,7 @@ export function validateStyleSpec(spec) {
   if (!isPlainObject(spec.source)) {
     errors.push('source must be an object');
   } else {
+    validateSupportedKeys(spec.source, SOURCE_KEYS, 'source', errors);
     if (!VALID_SOURCE_KINDS.has(spec.source.kind)) {
       errors.push('source.kind must be url or image');
     }
@@ -295,6 +338,9 @@ function normalizeTokenMap(map, unit, color = false) {
   for (const [name, value] of entries) {
     if (Object.hasOwn(output, name)) {
       throw new Error(`Token names collide after normalization: ${name}`);
+    }
+    if (typeof value === 'string' && containsUnsafeCssSyntax(value)) {
+      throw new Error(`Token ${name} contains unsafe CSS syntax`);
     }
     output[name] = normalizeTokenValue(value, unit, color);
   }

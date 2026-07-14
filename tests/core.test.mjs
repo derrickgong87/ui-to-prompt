@@ -284,3 +284,63 @@ test('refuses to compile an invalid style spec', () => {
     /Invalid StyleSpec: sections\.accessibility is required/,
   );
 });
+
+test('rejects additional properties at every strict StyleSpec boundary', () => {
+  const mutations = [
+    ['top-level', (spec) => { spec.extra = true; }, /extra is not supported/],
+    ['metadata', (spec) => { spec.metadata.extra = true; }, /metadata\.extra is not supported/],
+    ['source', (spec) => { spec.source.extra = true; }, /source\.extra is not supported/],
+    ['section', (spec) => { spec.sections.layout.extra = true; }, /sections\.layout\.extra is not supported/],
+    ['evidence', (spec) => { spec.sections.layout.evidence[0].extra = true; }, /evidence\[0\]\.extra is not supported/],
+  ];
+
+  for (const [name, mutate, pattern] of mutations) {
+    const spec = makeValidSpec();
+    mutate(spec);
+    const result = validateStyleSpec(spec);
+    assert.equal(result.valid, false, `${name} additional property must be rejected`);
+    assert.match(result.errors.join('\n'), pattern);
+  }
+});
+
+test('rejects token shapes that are outside the canonical schema', () => {
+  const unsupportedGroup = makeValidSpec();
+  unsupportedGroup.tokens.unsupported = { value: 'x' };
+  assert.match(
+    validateStyleSpec(unsupportedGroup).errors.join('\n'),
+    /tokens\.unsupported is not a supported token group/,
+  );
+
+  const nestedValue = makeValidSpec();
+  nestedValue.tokens.colors.Accent = { value: '#3157f5' };
+  assert.match(
+    validateStyleSpec(nestedValue).errors.join('\n'),
+    /tokens\.colors\.Accent must be a finite number, non-empty string, or null/,
+  );
+});
+
+test('rejects token values that can escape a generated CSS declaration', () => {
+  const payloads = [
+    'red; } body { background: black',
+    'url(https://attacker.example/beacon)',
+    'red /* leave the rest commented',
+    "red\n--injected: 1",
+  ];
+
+  for (const payload of payloads) {
+    const spec = makeValidSpec();
+    spec.tokens.colors.Attack = payload;
+    const result = validateStyleSpec(spec);
+    assert.equal(result.valid, false, payload);
+    assert.match(result.errors.join('\n'), /unsafe CSS syntax/);
+  }
+});
+
+test('CSS export refuses unsafe tokens even when called without StyleSpec validation', () => {
+  assert.throws(
+    () => exportCssVariables({
+      colors: { attack: 'red; } body { background: black' },
+    }),
+    /unsafe CSS syntax/,
+  );
+});

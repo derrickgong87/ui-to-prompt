@@ -11,6 +11,12 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "ui-to-prompt"
 SCRIPTS = SKILL / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+import compile_prompt as prompt_compiler  # noqa: E402
+from compile_prompt import compile_evidence_report  # noqa: E402
+from inspect_image import inspect_image  # noqa: E402
+from validate_spec import validate_spec  # noqa: E402
 
 
 def run_script(name, *args):
@@ -87,6 +93,7 @@ class SkillScriptTests(unittest.TestCase):
             self.assertEqual(evidence["source"]["kind"], "image")
             self.assertEqual(evidence["source"]["width"], 8)
             self.assertEqual(evidence["source"]["height"], 8)
+            self.assertEqual(evidence["source"]["path"], image_path.name)
             self.assertGreaterEqual(len(evidence["palette"]), 2)
             self.assertTrue(all(item["status"] == "computed" for item in evidence["palette"]))
             self.assertEqual(evidence["unknowns"]["responsive"], "unknown")
@@ -105,9 +112,19 @@ class SkillScriptTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr)
             prompt = (output_dir / "systematic-prompt.md").read_text(encoding="utf-8")
+            use_now = (output_dir / "use-now.md").read_text(encoding="utf-8")
+            evidence_report = (output_dir / "evidence-report.md").read_text(encoding="utf-8")
             self.assertIn("## 1. Mission and scope", prompt)
             self.assertIn("## 13. Unknown-handling rules", prompt)
             self.assertIn("Do not copy source brand assets", prompt)
+            self.assertIn("Evidence: [visual-model] image.composition", prompt)
+            self.assertIn("## Rights boundary", use_now)
+            self.assertIn("## Design rules", use_now)
+            self.assertIn("## Unknowns", use_now)
+            self.assertNotIn("```", use_now)
+            self.assertIn("## Evidence references", evidence_report)
+            self.assertIn("[visual-model] image.composition", evidence_report)
+            self.assertRegex(evidence_report, r"Evidence-backed sections: \d+/15")
             self.assertTrue((output_dir / "variables.css").stat().st_size > 0)
             self.assertTrue((output_dir / "evidence-report.md").stat().st_size > 0)
 
@@ -127,6 +144,73 @@ class SkillScriptTests(unittest.TestCase):
             self.assertEqual(accepted.returncode, 0, accepted.stderr)
             self.assertNotEqual(rejected.returncode, 0)
             self.assertIn("status", rejected.stderr.lower())
+
+    def test_validator_enforces_additional_properties_token_shapes_and_css_safety(self):
+        cases = []
+
+        extra = valid_spec()
+        extra["metadata"]["extra"] = True
+        cases.append((extra, "metadata.extra"))
+
+        unsupported = valid_spec()
+        unsupported["tokens"]["unsupported"] = {"value": "x"}
+        cases.append((unsupported, "tokens.unsupported"))
+
+        nested = valid_spec()
+        nested["tokens"]["colors"]["accent"] = {"value": "#3157f5"}
+        cases.append((nested, "tokens.colors.accent"))
+
+        css_injection = valid_spec()
+        css_injection["tokens"]["colors"]["attack"] = "red; } body { color: black"
+        cases.append((css_injection, "unsafe CSS syntax"))
+
+        for spec, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertIn(expected, "\n".join(validate_spec(spec)))
+
+    def test_css_compiler_refuses_unsafe_tokens_when_called_directly(self):
+        spec = valid_spec()
+        spec["tokens"]["colors"]["attack"] = "red; } body { color: black"
+
+        with self.assertRaisesRegex(ValueError, "unsafe CSS syntax"):
+            prompt_compiler.compile_css(spec)
+
+    def test_image_inspection_rejects_size_limits_without_loading_and_hashes_safely(self):
+        with tempfile.TemporaryDirectory() as directory:
+            directory = Path(directory)
+            image_path = directory / "large.png"
+            Image.new("RGB", (20, 20), "#3157F5").save(image_path)
+
+            with self.assertRaisesRegex(ValueError, "pixel limit"):
+                inspect_image(image_path, max_pixels=100)
+            with self.assertRaisesRegex(ValueError, "file-size limit"):
+                inspect_image(image_path, max_bytes=1)
+
+    def test_use_now_and_evidence_report_are_semantic_complete_artifacts(self):
+        spec = valid_spec()
+        self.assertTrue(
+            callable(getattr(prompt_compiler, "compile_use_now", None)),
+            "compile_use_now must provide semantic generation instead of line slicing",
+        )
+        use_now = prompt_compiler.compile_use_now(spec)
+        report = compile_evidence_report(spec)
+
+        self.assertTrue(use_now.startswith("# Use now\n"))
+        self.assertIn(spec["metadata"]["title"], use_now)
+        self.assertIn(spec["sections"]["constraints"]["summary"], use_now)
+        self.assertIn("Font files cannot be proven from pixels", use_now)
+        self.assertIn("Evidence-backed sections:", report)
+        self.assertIn("[derived] image.palette", report)
+
+    def test_eval_files_use_packaged_relative_fixtures(self):
+        evals_path = SKILL / "evals" / "evals.json"
+        evals = json.loads(evals_path.read_text(encoding="utf-8"))
+
+        for evaluation in evals["evals"]:
+            for filename in evaluation.get("files", []):
+                with self.subTest(filename=filename):
+                    self.assertFalse(Path(filename).is_absolute())
+                    self.assertTrue((SKILL / filename).is_file())
 
 
 if __name__ == "__main__":
