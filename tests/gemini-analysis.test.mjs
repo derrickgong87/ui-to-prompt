@@ -68,8 +68,8 @@ test('Gemini image analysis sends an inline image to the server SDK and maps a c
   const calls = [];
   const client = {
     interactions: {
-      create: async (request) => {
-        calls.push(request);
+      create: async (request, options) => {
+        calls.push({ request, options });
         return { output_text: JSON.stringify(modelReply()) };
       },
     },
@@ -91,17 +91,18 @@ test('Gemini image analysis sends an inline image to the server SDK and maps a c
   assert.equal(result.summary, 'Calm editorial hierarchy with generous whitespace.');
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].model, 'gemini-3.5-flash');
-  assert.equal(calls[0].store, false);
-  assert.equal(calls[0].input[1].type, 'image');
-  assert.equal(calls[0].input[1].mime_type, 'image/png');
-  assert.equal(calls[0].input[1].data, IMAGE.base64);
-  assert.match(calls[0].input[0].text, /do not reproduce logos/i);
-  assert.equal(calls[0].response_format.mime_type, 'application/json');
-  assert.deepEqual(calls[0].generation_config, {
+  assert.equal(calls[0].request.model, 'gemini-3.5-flash');
+  assert.equal(calls[0].request.store, false);
+  assert.equal(calls[0].request.input[1].type, 'image');
+  assert.equal(calls[0].request.input[1].mime_type, 'image/png');
+  assert.equal(calls[0].request.input[1].data, IMAGE.base64);
+  assert.match(calls[0].request.input[0].text, /do not reproduce logos/i);
+  assert.equal(calls[0].request.response_format.mime_type, 'application/json');
+  assert.deepEqual(calls[0].request.generation_config, {
     max_output_tokens: 2_048,
     thinking_level: 'minimal',
   });
+  assert.deepEqual(calls[0].options, { timeout: 20_000, maxRetries: 0 });
 });
 
 test('Gemini analysis fails closed for missing credentials, invalid model output, and timeouts', async () => {

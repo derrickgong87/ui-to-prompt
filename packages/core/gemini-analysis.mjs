@@ -9,6 +9,7 @@ const MAX_SECTION_CHARS = 420;
 const MAX_TITLE_CHARS = 120;
 const MAX_SUMMARY_CHARS = 280;
 const MAX_OUTPUT_TOKENS = 2_048;
+const PROVIDER_TIMEOUT_MARGIN_MS = 10_000;
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
 const STYLE_DTO_SCHEMA = Object.freeze({
@@ -172,6 +173,9 @@ export async function analyzeGeminiImage({
         max_output_tokens: MAX_OUTPUT_TOKENS,
         thinking_level: 'minimal',
       },
+    }, {
+      timeout: Math.max(1, timeoutMs - PROVIDER_TIMEOUT_MARGIN_MS),
+      maxRetries: 0,
     }), timeoutMs);
     const output = typeof interaction?.output_text === 'string' ? interaction.output_text : undefined;
     if (!output) {
