@@ -190,6 +190,13 @@ export async function analyzeGeminiImage({
     return createStyleSpec(dto, { sourceRef: sourceRef.trim(), rightsMode });
   } catch (error) {
     if (error instanceof GeminiAnalysisError) throw error;
+    console.error('[ui-to-prompt] Gemini provider call failed', {
+      name: typeof error?.name === 'string' ? error.name : 'UnknownError',
+      status: Number.isSafeInteger(error?.status) ? error.status : undefined,
+      statusCode: Number.isSafeInteger(error?.statusCode) ? error.statusCode : undefined,
+      code: typeof error?.code === 'string' ? error.code : undefined,
+      causeName: typeof error?.cause?.name === 'string' ? error.cause.name : undefined,
+    });
     throw new GeminiAnalysisError(GEMINI_PROVIDER_FAILURE, 502, 'The visual analysis provider is unavailable.');
   }
 }
