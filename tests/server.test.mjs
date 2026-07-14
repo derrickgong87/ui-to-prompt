@@ -42,7 +42,7 @@ test('analyze-url validates the request shape and returns injected evidence', as
   await withServer({ analyzeUrl }, async (baseUrl) => {
     const missing = await fetch(`${baseUrl}/api/analyze-url`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', origin: baseUrl },
       body: JSON.stringify({}),
     });
     assert.equal(missing.status, 400);
@@ -50,13 +50,82 @@ test('analyze-url validates the request shape and returns injected evidence', as
 
     const response = await fetch(`${baseUrl}/api/analyze-url`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', origin: baseUrl },
       body: JSON.stringify({ url: 'https://example.com/' }),
     });
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.source.url, 'https://example.com/');
   });
+});
+
+test('analyze-url requires a same-origin JSON request', async () => {
+  await withServer({ analyzeUrl: async () => ({ ok: true }) }, async (baseUrl) => {
+    const noOrigin = await fetch(`${baseUrl}/api/analyze-url`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com/' }),
+    });
+    assert.equal(noOrigin.status, 403);
+
+    const crossOrigin = await fetch(`${baseUrl}/api/analyze-url`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://attacker.example' },
+      body: JSON.stringify({ url: 'https://example.com/' }),
+    });
+    assert.equal(crossOrigin.status, 403);
+
+    const wrongType = await fetch(`${baseUrl}/api/analyze-url`, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain', origin: baseUrl },
+      body: JSON.stringify({ url: 'https://example.com/' }),
+    });
+    assert.equal(wrongType.status, 415);
+  });
+});
+
+test('analyze-url permits one active analysis and rejects excess work without queueing', async () => {
+  let release;
+  let calls = 0;
+  const analyzeUrl = async () => {
+    calls += 1;
+    await new Promise((resolve) => { release = resolve; });
+    return { ok: true };
+  };
+
+  await withServer({ analyzeUrl, maxConcurrentAnalyses: 1 }, async (baseUrl) => {
+    const request = () => fetch(`${baseUrl}/api/analyze-url`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: baseUrl },
+      body: JSON.stringify({ url: 'https://example.com/' }),
+    });
+    const first = request();
+    while (calls === 0) await new Promise((resolve) => setImmediate(resolve));
+    const busy = await request();
+    assert.equal(busy.status, 429);
+    assert.equal(busy.headers.get('retry-after'), '1');
+    assert.equal(calls, 1);
+    release();
+    assert.equal((await first).status, 200);
+  });
+});
+
+test('analyze-url rejects JSON responses over the configured byte boundary', async () => {
+  await withServer(
+    {
+      analyzeUrl: async () => ({ evidence: 'x'.repeat(512) }),
+      maxResponseBytes: 128,
+    },
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/analyze-url`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: baseUrl },
+        body: JSON.stringify({ url: 'https://example.com/' }),
+      });
+      assert.equal(response.status, 502);
+      assert.match((await response.json()).error, /response limit/i);
+    },
+  );
 });
 
 test('does not expose arbitrary files through traversal paths', async () => {

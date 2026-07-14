@@ -10,6 +10,7 @@ import {
 
 const PUBLIC_DIR = fileURLToPath(new URL('./public/', import.meta.url));
 const MAX_JSON_BYTES = 64 * 1024;
+const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.css', 'text/css; charset=utf-8'],
@@ -30,9 +31,24 @@ function securityHeaders(contentType) {
   };
 }
 
-function sendJson(response, status, payload) {
-  response.writeHead(status, securityHeaders('application/json; charset=utf-8'));
-  response.end(`${JSON.stringify(payload)}\n`);
+function sendJson(
+  response,
+  status,
+  payload,
+  { maxBytes = MAX_RESPONSE_BYTES, headers = {} } = {},
+) {
+  let body = `${JSON.stringify(payload)}\n`;
+  if (Buffer.byteLength(body) > maxBytes) {
+    status = 502;
+    body = `${JSON.stringify({
+      error: `URL analysis output exceeds the ${maxBytes}-byte response limit.`,
+    })}\n`;
+  }
+  response.writeHead(status, {
+    ...securityHeaders('application/json; charset=utf-8'),
+    ...headers,
+  });
+  response.end(body);
 }
 
 async function readJsonBody(request) {
@@ -92,7 +108,19 @@ async function serveStatic(request, response, pathname) {
   }
 }
 
-export function createWebServer({ analyzeUrl = collectUrlEvidence } = {}) {
+export function createWebServer({
+  analyzeUrl = collectUrlEvidence,
+  allowedOrigin,
+  maxConcurrentAnalyses = 1,
+  maxResponseBytes = MAX_RESPONSE_BYTES,
+} = {}) {
+  if (!Number.isSafeInteger(maxConcurrentAnalyses) || maxConcurrentAnalyses < 1) {
+    throw new TypeError('maxConcurrentAnalyses must be a positive integer.');
+  }
+  if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes < 1) {
+    throw new TypeError('maxResponseBytes must be a positive integer.');
+  }
+  let activeAnalyses = 0;
   return createServer(async (request, response) => {
     const current = new URL(request.url ?? '/', 'http://127.0.0.1');
 
@@ -110,18 +138,55 @@ export function createWebServer({ analyzeUrl = collectUrlEvidence } = {}) {
         sendJson(response, 405, { error: 'Method not allowed.' });
         return;
       }
+      const contentType = request.headers['content-type']
+        ?.split(';', 1)[0]
+        .trim()
+        .toLowerCase();
+      if (contentType !== 'application/json') {
+        sendJson(response, 415, { error: 'Content-Type must be application/json.' });
+        return;
+      }
+      const expectedOrigin = allowedOrigin ?? `${request.socket.encrypted ? 'https' : 'http'}://${request.headers.host}`;
+      let requestOrigin;
+      try {
+        requestOrigin = new URL(request.headers.origin).origin;
+      } catch {
+        requestOrigin = null;
+      }
+      if (requestOrigin !== new URL(expectedOrigin).origin) {
+        sendJson(response, 403, { error: 'A same-origin Origin header is required.' });
+        return;
+      }
       try {
         const body = await readJsonBody(request);
         if (typeof body.url !== 'string' || body.url.trim() === '') {
           sendJson(response, 400, { error: 'url is required.' });
           return;
         }
-        const evidence = await analyzeUrl(body.url.trim());
-        sendJson(response, 200, evidence);
+        if (activeAnalyses >= maxConcurrentAnalyses) {
+          sendJson(
+            response,
+            429,
+            { error: 'URL analysis is busy. Retry later.' },
+            { headers: { 'retry-after': '1' } },
+          );
+          return;
+        }
+        activeAnalyses += 1;
+        try {
+          const evidence = await analyzeUrl(body.url.trim());
+          sendJson(response, 200, evidence, { maxBytes: maxResponseBytes });
+        } finally {
+          activeAnalyses -= 1;
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'URL analysis failed.';
         const status = error?.status
-          ?? (message === PLAYWRIGHT_MISSING_ERROR ? 503 : 400);
+          ?? (error?.code === 'URL_EVIDENCE_TIMEOUT'
+            ? 504
+            : message === PLAYWRIGHT_MISSING_ERROR
+              ? 503
+              : 400);
         sendJson(response, status, { error: message });
       }
       return;
