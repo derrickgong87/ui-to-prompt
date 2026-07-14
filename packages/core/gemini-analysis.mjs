@@ -158,8 +158,10 @@ export async function analyzeGeminiImage({
       throw new GeminiAnalysisError(GEMINI_PROVIDER_FAILURE, 502, 'The visual analysis provider is unavailable.');
     }
     const providerTimeoutMs = Math.max(1, timeoutMs - PROVIDER_TIMEOUT_MARGIN_MS);
+    const normalizedModel = model.trim();
+    const thinkingConfig = normalizedModel.startsWith('gemini-2.0-') ? undefined : { thinkingLevel: 'low' };
     const response = await withTimeout(provider.models.generateContent({
-      model: model.trim(),
+      model: normalizedModel,
       contents: [
         { inlineData: { data: image.base64.trim(), mimeType: image.mimeType } },
         { text: STYLE_ANALYSIS_INSTRUCTION },
@@ -168,7 +170,7 @@ export async function analyzeGeminiImage({
         responseMimeType: 'application/json',
         responseJsonSchema: STYLE_DTO_SCHEMA,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        thinkingConfig: { thinkingLevel: 'low' },
+        ...(thinkingConfig ? { thinkingConfig } : {}),
         httpOptions: {
           timeout: providerTimeoutMs,
           retryOptions: { attempts: 3 },

@@ -133,3 +133,22 @@ test('Gemini analysis fails closed for missing credentials, invalid model output
     (error) => error.code === GEMINI_TIMEOUT && error.status === 504,
   );
 });
+
+test('Gemini 2.0 fallback omits the unsupported thinking configuration', async () => {
+  const calls = [];
+  await analyzeGeminiImage({
+    apiKey: 'test-key',
+    model: 'gemini-2.0-flash',
+    image: IMAGE,
+    client: {
+      models: {
+        generateContent: async (request) => {
+          calls.push(request);
+          return { text: JSON.stringify(modelReply()) };
+        },
+      },
+    },
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].config.thinkingConfig, undefined);
+});
