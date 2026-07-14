@@ -154,30 +154,29 @@ export async function analyzeGeminiImage({
   let provider = client;
   try {
     provider ??= await loadGeminiClient(apiKey.trim(), loadClient);
-    if (typeof provider?.interactions?.create !== 'function') {
+    if (typeof provider?.models?.generateContent !== 'function') {
       throw new GeminiAnalysisError(GEMINI_PROVIDER_FAILURE, 502, 'The visual analysis provider is unavailable.');
     }
-    const interaction = await withTimeout(provider.interactions.create({
+    const providerTimeoutMs = Math.max(1, timeoutMs - PROVIDER_TIMEOUT_MARGIN_MS);
+    const response = await withTimeout(provider.models.generateContent({
       model: model.trim(),
-      store: false,
-      input: [
-        { type: 'text', text: STYLE_ANALYSIS_INSTRUCTION },
-        { type: 'image', data: image.base64.trim(), mime_type: image.mimeType },
+      contents: [
+        { inlineData: { data: image.base64.trim(), mimeType: image.mimeType } },
+        { text: STYLE_ANALYSIS_INSTRUCTION },
       ],
-      response_format: {
-        type: 'text',
-        mime_type: 'application/json',
-        schema: STYLE_DTO_SCHEMA,
+      config: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: STYLE_DTO_SCHEMA,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        thinkingConfig: { thinkingLevel: 'minimal' },
+        httpOptions: {
+          timeout: providerTimeoutMs,
+          retryOptions: { attempts: 1 },
+        },
+        abortSignal: AbortSignal.timeout(providerTimeoutMs),
       },
-      generation_config: {
-        max_output_tokens: MAX_OUTPUT_TOKENS,
-        thinking_level: 'minimal',
-      },
-    }, {
-      timeout: Math.max(1, timeoutMs - PROVIDER_TIMEOUT_MARGIN_MS),
-      maxRetries: 0,
     }), timeoutMs);
-    const output = typeof interaction?.output_text === 'string' ? interaction.output_text : undefined;
+    const output = typeof response?.text === 'string' ? response.text : undefined;
     if (!output) {
       throw new GeminiAnalysisError(GEMINI_OUTPUT_INVALID, 502, 'The visual analysis provider returned no usable result.');
     }

@@ -64,13 +64,13 @@ test('runtime config requires an explicit public origin in production and never 
   assert.doesNotMatch(JSON.stringify(config.public), /secret/);
 });
 
-test('Gemini image analysis sends an inline image to the server SDK and maps a constrained DTO to StyleSpec', async () => {
+test('Gemini image analysis sends an inline image to the stable server SDK path and maps a constrained DTO to StyleSpec', async () => {
   const calls = [];
   const client = {
-    interactions: {
-      create: async (request, options) => {
-        calls.push({ request, options });
-        return { output_text: JSON.stringify(modelReply()) };
+    models: {
+      generateContent: async (request) => {
+        calls.push(request);
+        return { text: JSON.stringify(modelReply()) };
       },
     },
   };
@@ -91,18 +91,21 @@ test('Gemini image analysis sends an inline image to the server SDK and maps a c
   assert.equal(result.summary, 'Calm editorial hierarchy with generous whitespace.');
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].request.model, 'gemini-3.5-flash');
-  assert.equal(calls[0].request.store, false);
-  assert.equal(calls[0].request.input[1].type, 'image');
-  assert.equal(calls[0].request.input[1].mime_type, 'image/png');
-  assert.equal(calls[0].request.input[1].data, IMAGE.base64);
-  assert.match(calls[0].request.input[0].text, /do not reproduce logos/i);
-  assert.equal(calls[0].request.response_format.mime_type, 'application/json');
-  assert.deepEqual(calls[0].request.generation_config, {
-    max_output_tokens: 2_048,
-    thinking_level: 'minimal',
+  assert.equal(calls[0].model, 'gemini-3.5-flash');
+  assert.equal(calls[0].contents[0].inlineData.mimeType, 'image/png');
+  assert.equal(calls[0].contents[0].inlineData.data, IMAGE.base64);
+  assert.match(calls[0].contents[1].text, /do not reproduce logos/i);
+  assert.equal(calls[0].config.responseMimeType, 'application/json');
+  assert.equal(calls[0].config.responseJsonSchema.type, 'object');
+  assert.equal(calls[0].config.maxOutputTokens, 2_048);
+  assert.deepEqual(calls[0].config.thinkingConfig, {
+    thinkingLevel: 'minimal',
   });
-  assert.deepEqual(calls[0].options, { timeout: 20_000, maxRetries: 0 });
+  assert.deepEqual(calls[0].config.httpOptions, {
+    timeout: 20_000,
+    retryOptions: { attempts: 1 },
+  });
+  assert.equal(calls[0].config.abortSignal.aborted, false);
 });
 
 test('Gemini analysis fails closed for missing credentials, invalid model output, and timeouts', async () => {
@@ -115,7 +118,7 @@ test('Gemini analysis fails closed for missing credentials, invalid model output
     () => analyzeGeminiImage({
       apiKey: 'test-key',
       image: IMAGE,
-      client: { interactions: { create: async () => ({ output_text: JSON.stringify({ title: 'Incomplete' }) }) } },
+      client: { models: { generateContent: async () => ({ text: JSON.stringify({ title: 'Incomplete' }) }) } },
     }),
     (error) => error.code === GEMINI_OUTPUT_INVALID && error.status === 502,
   );
@@ -125,7 +128,7 @@ test('Gemini analysis fails closed for missing credentials, invalid model output
       apiKey: 'test-key',
       image: IMAGE,
       timeoutMs: 5,
-      client: { interactions: { create: async () => new Promise(() => {}) } },
+      client: { models: { generateContent: async () => new Promise(() => {}) } },
     }),
     (error) => error.code === GEMINI_TIMEOUT && error.status === 504,
   );
