@@ -30,6 +30,24 @@ SECTIONS = [
     "Iteration protocol",
 ]
 
+DOMAIN_MAP = [
+    ["visualIntent"],
+    [],
+    [],
+    ["color", "typography"],
+    [],
+    ["spacing", "surfaces"],
+    ["layout", "responsiveness"],
+    ["components", "iconography"],
+    ["content", "imagery"],
+    ["interactions", "motion"],
+    ["accessibility"],
+    ["constraints"],
+    [],
+    [],
+    [],
+]
+
 
 def value_of(item):
     return item.get("value") if isinstance(item, dict) else item
@@ -52,33 +70,56 @@ def flatten_tokens(tokens, prefix=""):
             yield name, value_of(value)
 
 
+def format_domain(name, section):
+    status = section.get("status", "unknown").upper()
+    confidence = round(float(section.get("confidence", 0)) * 100)
+    lines = [
+        f"### {name}",
+        f"Status: {status}",
+        f"Confidence: {confidence}%",
+        f"Directive: {section.get('summary', 'No directive recorded.')}",
+    ]
+    if section.get("status") == "unknown":
+        lines.append(f"Unknown handling: {section.get('unknownReason', 'Unavailable from evidence')}")
+    details = section.get("details")
+    if details:
+        lines.extend(["Structured details:", "```json", json.dumps(details, ensure_ascii=False, indent=2), "```"])
+    return "\n".join(lines)
+
+
 def compile_prompt(spec: dict) -> str:
     metadata = spec.get("metadata", {})
-    rights = metadata.get("rights_mode", "style-only")
+    rights = metadata.get("rightsMode", "style-only")
     title = metadata.get("title", "Untitled visual reference")
-    tokens = list(flatten_tokens(spec.get("design_tokens", {})))
+    tokens = list(flatten_tokens(spec.get("tokens", {})))
+    domains = spec.get("sections", {})
     uncertainties = [
-        f"{item.get('field', 'Unspecified field')}: {item.get('reason', 'Unknown from available evidence')}"
-        if isinstance(item, dict)
-        else str(item)
-        for item in spec.get("uncertainties", [])
+        f"{name}: {section.get('unknownReason', 'Unavailable from evidence')}"
+        for name, section in domains.items()
+        if isinstance(section, dict) and section.get("status") == "unknown"
     ]
+    invariants = domains.get("visualIntent", {}).get("details", {}).get("invariants", [])
+    constraints = [domains.get("constraints", {}).get("summary", "Do not copy source assets.")]
+
+    def mapped(index, fallback):
+        rendered = [format_domain(name, domains[name]) for name in DOMAIN_MAP[index] if name in domains]
+        return "\n\n".join(rendered) if rendered else fallback
 
     content = [
-        f"Recreate the design language described by **{title}** as an original, semantic, editable interface. Follow the supplied rules rather than copying source code.",
+        mapped(0, f"Recreate the design language described by **{title}** as an original, semantic, editable interface."),
         f"Rights mode: `{rights}`. In style-only mode, exclude source logos, brand names, long-form copy, proprietary imagery, restricted fonts, and distinctive protected assets.",
         "Resolve conflicts in this order: exact-context browser facts; matching screenshot; cross-viewport evidence; single-image inference; general design convention. Preserve unknowns instead of inventing facts.",
-        bullet_list(spec.get("visual_principles")),
-        bullet_list(spec.get("acceptance_targets"), "Keep only the evidence-backed invariants recorded in StyleSpec."),
+        mapped(3, "Preserve the source's evidence-backed visual relationships."),
+        bullet_list(invariants, "Treat high-confidence domain directives as invariants."),
         bullet_list([f"{name}: {value}" for name, value in tokens]),
-        bullet_list([*spec.get("layout", []), *spec.get("responsive_rules", [])]),
-        bullet_list(spec.get("components")),
-        "Use original content with the same evidence-backed hierarchy, density, line-length rhythm, and image-role relationships. Do not reuse source copy or protected assets.",
-        bullet_list(spec.get("interaction_motion"), "Do not invent hidden interaction or motion behavior; use restrained accessible defaults and mark them as implementation choices."),
-        bullet_list(spec.get("accessibility"), "Use semantic HTML, visible keyboard focus, sufficient contrast, touch targets, reflow, and reduced-motion support."),
-        bullet_list(spec.get("negative_constraints")),
+        mapped(6, "No responsive behavior was proven; use a conservative, replaceable fallback."),
+        mapped(7, "No component grammar was proven; use semantic primitives and label assumptions."),
+        mapped(8, "Use original content and imagery with evidence-backed density and hierarchy."),
+        mapped(9, "Do not invent hidden interaction or motion behavior."),
+        mapped(10, "Use semantic HTML, visible keyboard focus, sufficient contrast, touch targets, reflow, and reduced-motion support."),
+        bullet_list(constraints),
         bullet_list(uncertainties, "No unresolved fields were recorded. Still do not claim facts beyond the StyleSpec."),
-        bullet_list(spec.get("acceptance_targets")),
+        "- Verify every observed and computed directive.\n- Preserve inferred and translated guidance in proportion to confidence.\n- Keep every unknown visible and replaceable.",
         "After the first implementation, compare structure, typography, wrapping, spacing, palette roles, responsive behavior, focus, and motion separately. Fix the StyleSpec-level cause before adding local patches. Never use the source screenshot as a background implementation.",
     ]
     lines = ["# Systematic Design Prompt", ""]
@@ -93,7 +134,7 @@ def css_name(name: str) -> str:
 
 def compile_css(spec: dict) -> str:
     lines = [":root {"]
-    for name, value in flatten_tokens(spec.get("design_tokens", {})):
+    for name, value in flatten_tokens(spec.get("tokens", {})):
         if isinstance(value, (str, int, float)) and value != "":
             lines.append(f"  --ui-{css_name(name)}: {value};")
     lines.append("}")
@@ -102,25 +143,19 @@ def compile_css(spec: dict) -> str:
 
 def compile_evidence_report(spec: dict) -> str:
     metadata = spec.get("metadata", {})
-    provenance = spec.get("provenance", {})
+    source = spec.get("source", {})
     lines = [
         "# Evidence and uncertainty report",
         "",
         f"- Title: {metadata.get('title', 'Untitled')}",
-        f"- Source kind: {metadata.get('source_kind', 'unknown')}",
-        f"- Rights mode: {metadata.get('rights_mode', 'style-only')}",
-        f"- Source: {provenance.get('source', 'not recorded')}",
-        f"- Captured at: {provenance.get('captured_at', 'not recorded')}",
+        f"- Source kind: {source.get('kind', 'unknown')}",
+        f"- Rights mode: {metadata.get('rightsMode', 'style-only')}",
+        f"- Source: {source.get('ref', 'not recorded')}",
         "",
         "## Uncertainties",
         "",
         bullet_list(
-            [
-                f"{item.get('field', 'Unspecified')}: {item.get('reason', 'No reason recorded')}"
-                if isinstance(item, dict)
-                else item
-                for item in spec.get("uncertainties", [])
-            ],
+            [f"{name}: {section.get('unknownReason', 'No reason recorded')}" for name, section in spec.get("sections", {}).items() if section.get("status") == "unknown"],
             "No uncertainties were recorded.",
         ),
         "",

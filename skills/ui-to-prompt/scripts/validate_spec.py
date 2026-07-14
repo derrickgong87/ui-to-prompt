@@ -10,42 +10,47 @@ from pathlib import Path
 
 
 STATUSES = {"observed", "computed", "inferred", "translated", "user", "unknown"}
-REQUIRED = {
-    "schema_version",
-    "metadata",
-    "provenance",
-    "visual_principles",
-    "design_tokens",
-    "layout",
-    "components",
-    "responsive_rules",
-    "interaction_motion",
-    "accessibility",
-    "negative_constraints",
-    "uncertainties",
-    "acceptance_targets",
+EVIDENCE_LABELS = {
+    "screenshot", "dom", "css", "font", "animation", "network",
+    "ocr", "visual-model", "user", "derived",
 }
+SECTION_KEYS = {
+    "visualIntent", "layout", "color", "typography", "spacing", "surfaces",
+    "components", "imagery", "iconography", "responsiveness", "interactions",
+    "motion", "accessibility", "content", "constraints",
+}
+REQUIRED = {"schemaVersion", "metadata", "source", "tokens", "sections"}
 
 
-def validate_node(node, path="$", errors=None):
-    errors = [] if errors is None else errors
-    if isinstance(node, dict):
-        if "status" in node and node["status"] not in STATUSES:
-            errors.append(f"{path}.status must be one of {sorted(STATUSES)}")
-        if "confidence" in node:
-            value = node["confidence"]
-            if not isinstance(value, (int, float)) or isinstance(value, bool) or not 0 <= value <= 1:
-                errors.append(f"{path}.confidence must be between 0 and 1")
-        if "status" in node and node["status"] != "unknown":
-            evidence = node.get("evidence")
-            if "value" in node and (not isinstance(evidence, list) or not evidence):
-                errors.append(f"{path}.evidence is required for evidence-backed values")
-        for key, value in node.items():
-            validate_node(value, f"{path}.{key}", errors)
-    elif isinstance(node, list):
-        for index, value in enumerate(node):
-            validate_node(value, f"{path}[{index}]", errors)
-    return errors
+def validate_section(section, path, errors):
+    if not isinstance(section, dict):
+        errors.append(f"{path} must be an object")
+        return
+    status = section.get("status")
+    if status not in STATUSES:
+        errors.append(f"{path}.status must be one of {sorted(STATUSES)}")
+    confidence = section.get("confidence")
+    if not isinstance(confidence, (int, float)) or isinstance(confidence, bool) or not 0 <= confidence <= 1:
+        errors.append(f"{path}.confidence must be between 0 and 1")
+    if not isinstance(section.get("summary"), str) or not section["summary"].strip():
+        errors.append(f"{path}.summary must be a non-empty string")
+    evidence = section.get("evidence")
+    if not isinstance(evidence, list):
+        errors.append(f"{path}.evidence must be an array")
+        evidence = []
+    if status != "unknown" and not evidence:
+        errors.append(f"{path}.evidence is required for evidence-backed sections")
+    if status == "unknown" and not str(section.get("unknownReason", "")).strip():
+        errors.append(f"{path}.unknownReason is required when status is unknown")
+    for index, item in enumerate(evidence):
+        item_path = f"{path}.evidence[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{item_path} must be an object")
+            continue
+        if item.get("label") not in EVIDENCE_LABELS:
+            errors.append(f"{item_path}.label is not supported")
+        if not isinstance(item.get("ref"), str) or not item["ref"].strip():
+            errors.append(f"{item_path}.ref must be a non-empty string")
 
 
 def validate_spec(spec: dict) -> list[str]:
@@ -54,9 +59,36 @@ def validate_spec(spec: dict) -> list[str]:
     errors = []
     for key in sorted(REQUIRED - set(spec)):
         errors.append(f"$.{key} is required")
-    if spec.get("schema_version") != "1.0.0":
-        errors.append("$.schema_version must equal 1.0.0")
-    errors.extend(validate_node(spec))
+    if spec.get("schemaVersion") != "1.0":
+        errors.append("$.schemaVersion must equal 1.0")
+    metadata = spec.get("metadata")
+    if not isinstance(metadata, dict):
+        errors.append("$.metadata must be an object")
+    else:
+        if not isinstance(metadata.get("title"), str) or not metadata["title"].strip():
+            errors.append("$.metadata.title is required")
+        if metadata.get("rightsMode") not in {"style-only", "authorized-reconstruction"}:
+            errors.append("$.metadata.rightsMode is not supported")
+    source = spec.get("source")
+    if not isinstance(source, dict):
+        errors.append("$.source must be an object")
+    else:
+        if source.get("kind") not in {"url", "image"}:
+            errors.append("$.source.kind must be url or image")
+        if not isinstance(source.get("ref"), str) or not source["ref"].strip():
+            errors.append("$.source.ref is required")
+    if not isinstance(spec.get("tokens"), dict):
+        errors.append("$.tokens must be an object")
+    sections = spec.get("sections")
+    if not isinstance(sections, dict):
+        errors.append("$.sections must be an object")
+    else:
+        for key in sorted(SECTION_KEYS - set(sections)):
+            errors.append(f"$.sections.{key} is required")
+        for key in sorted(set(sections) - SECTION_KEYS):
+            errors.append(f"$.sections.{key} is not supported")
+        for key in sorted(SECTION_KEYS & set(sections)):
+            validate_section(sections[key], f"$.sections.{key}", errors)
     return errors
 
 

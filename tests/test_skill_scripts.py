@@ -24,55 +24,45 @@ def run_script(name, *args):
 
 def valid_spec():
     return {
-        "schema_version": "1.0.0",
+        "schemaVersion": "1.0",
         "metadata": {
             "title": "Editorial analytics reference",
-            "source_kind": "image",
-            "rights_mode": "style-only",
+            "rightsMode": "style-only",
         },
-        "provenance": {"source": "fixture.png", "captured_at": "2026-07-14T00:00:00Z"},
-        "visual_principles": [
-            {
-                "value": "Editorial hierarchy with evidence-led accents",
-                "status": "inferred",
-                "confidence": 0.75,
-                "evidence": ["image.composition"],
-            }
-        ],
-        "design_tokens": {
+        "source": {"kind": "image", "ref": "fixture.png"},
+        "tokens": {
             "colors": {
-                "canvas": {
-                    "value": "#F4F1E8",
-                    "status": "computed",
-                    "confidence": 0.98,
-                    "evidence": ["image.palette.0"],
-                },
-                "ink": {
-                    "value": "#191A17",
-                    "status": "computed",
-                    "confidence": 0.98,
-                    "evidence": ["image.palette.1"],
-                },
+                "canvas": "#F4F1E8",
+                "ink": "#191A17",
             },
             "typography": {},
             "spacing": {},
             "radii": {},
             "shadows": {},
         },
-        "layout": [],
-        "components": [],
-        "responsive_rules": [],
-        "interaction_motion": [],
-        "accessibility": [],
-        "negative_constraints": ["Do not copy source brand assets."],
-        "uncertainties": [
-            {
-                "field": "typography.family",
-                "reason": "The font family cannot be proven from pixels.",
-                "status": "unknown",
-            }
-        ],
-        "acceptance_targets": ["Keep the palette role relationships."],
+        "sections": {
+            "visualIntent": {
+                "status": "inferred",
+                "confidence": 0.75,
+                "evidence": [{"label": "visual-model", "ref": "image.composition"}],
+                "summary": "Use editorial hierarchy with evidence-led accents.",
+                "details": {"invariants": ["Keep the palette role relationships."]},
+            },
+            "layout": {"status": "inferred", "confidence": 0.6, "evidence": [{"label": "screenshot", "ref": "fixture.png"}], "summary": "Use an asymmetric editorial grid."},
+            "color": {"status": "computed", "confidence": 0.98, "evidence": [{"label": "derived", "ref": "image.palette"}], "summary": "Use warm canvas and dark ink roles."},
+            "typography": {"status": "unknown", "confidence": 0, "evidence": [], "summary": "The exact font family is unavailable.", "unknownReason": "Font files cannot be proven from pixels."},
+            "spacing": {"status": "inferred", "confidence": 0.55, "evidence": [{"label": "screenshot", "ref": "fixture.png"}], "summary": "Use a restrained spacing rhythm."},
+            "surfaces": {"status": "observed", "confidence": 0.8, "evidence": [{"label": "screenshot", "ref": "fixture.png"}], "summary": "Use thin rules and restrained shadows."},
+            "components": {"status": "inferred", "confidence": 0.6, "evidence": [{"label": "visual-model", "ref": "image.regions"}], "summary": "Use evidence-led cards and controls."},
+            "imagery": {"status": "observed", "confidence": 0.8, "evidence": [{"label": "screenshot", "ref": "fixture.png"}], "summary": "Use editorial crops with original imagery."},
+            "iconography": {"status": "unknown", "confidence": 0, "evidence": [], "summary": "Icon rules were not visible.", "unknownReason": "No representative icons are present."},
+            "responsiveness": {"status": "unknown", "confidence": 0, "evidence": [], "summary": "Responsive behavior is not available.", "unknownReason": "Only one desktop image was supplied."},
+            "interactions": {"status": "unknown", "confidence": 0, "evidence": [], "summary": "Interaction states are not available.", "unknownReason": "A static image contains no interaction evidence."},
+            "motion": {"status": "unknown", "confidence": 0, "evidence": [], "summary": "Motion is not available.", "unknownReason": "A static image contains no timing evidence."},
+            "accessibility": {"status": "inferred", "confidence": 0.5, "evidence": [{"label": "derived", "ref": "image.contrast"}], "summary": "Meet semantic, contrast, focus, and reduced-motion requirements."},
+            "content": {"status": "inferred", "confidence": 0.7, "evidence": [{"label": "screenshot", "ref": "fixture.png"}], "summary": "Keep concise editorial copy density."},
+            "constraints": {"status": "user", "confidence": 1, "evidence": [{"label": "user", "ref": "rights-mode"}], "summary": "Do not copy source brand assets."},
+        },
     }
 
 
@@ -128,7 +118,7 @@ class SkillScriptTests(unittest.TestCase):
             invalid_path = directory / "invalid.json"
             valid_path.write_text(json.dumps(valid_spec()), encoding="utf-8")
             invalid = valid_spec()
-            invalid["visual_principles"][0]["status"] = "guessed-without-evidence"
+            invalid["sections"]["visualIntent"]["status"] = "guessed-without-evidence"
             invalid_path.write_text(json.dumps(invalid), encoding="utf-8")
 
             accepted = run_script("validate_spec.py", "--input", valid_path)
