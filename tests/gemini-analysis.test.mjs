@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   GEMINI_NOT_CONFIGURED,
   GEMINI_OUTPUT_INVALID,
+  GEMINI_PROVIDER_FAILURE,
   GEMINI_TIMEOUT,
   analyzeGeminiImage,
 } from '../packages/core/gemini-analysis.mjs';
@@ -131,6 +132,28 @@ test('Gemini analysis fails closed for missing credentials, invalid model output
       client: { models: { generateContent: async () => new Promise(() => {}) } },
     }),
     (error) => error.code === GEMINI_TIMEOUT && error.status === 504,
+  );
+});
+
+test('Gemini provider failures remain generic even when provider diagnostics are available', async () => {
+  await assert.rejects(
+    () => analyzeGeminiImage({
+      apiKey: 'test-key',
+      model: 'gemini-2.0-flash-001',
+      image: IMAGE,
+      client: {
+        models: {
+          generateContent: async () => {
+            const error = new Error('provider diagnostic that must not reach the browser');
+            error.status = 404;
+            throw error;
+          },
+        },
+      },
+    }),
+    (error) => error.code === GEMINI_PROVIDER_FAILURE
+      && error.status === 502
+      && error.message === 'The visual analysis provider is unavailable.',
   );
 });
 

@@ -152,13 +152,14 @@ export async function analyzeGeminiImage({
   }
 
   let provider = client;
+  let normalizedModel;
   try {
     provider ??= await loadGeminiClient(apiKey.trim(), loadClient);
     if (typeof provider?.models?.generateContent !== 'function') {
       throw new GeminiAnalysisError(GEMINI_PROVIDER_FAILURE, 502, 'The visual analysis provider is unavailable.');
     }
     const providerTimeoutMs = Math.max(1, timeoutMs - PROVIDER_TIMEOUT_MARGIN_MS);
-    const normalizedModel = model.trim();
+    normalizedModel = model.trim();
     const thinkingConfig = normalizedModel.startsWith('gemini-2.0-') ? undefined : { thinkingLevel: 'low' };
     const response = await withTimeout(provider.models.generateContent({
       model: normalizedModel,
@@ -192,11 +193,13 @@ export async function analyzeGeminiImage({
   } catch (error) {
     if (error instanceof GeminiAnalysisError) throw error;
     console.error('[ui-to-prompt] Gemini provider call failed', {
+      model: normalizedModel,
       name: typeof error?.name === 'string' ? error.name : 'UnknownError',
       status: Number.isSafeInteger(error?.status) ? error.status : undefined,
       statusCode: Number.isSafeInteger(error?.statusCode) ? error.statusCode : undefined,
       code: typeof error?.code === 'string' ? error.code : undefined,
       causeName: typeof error?.cause?.name === 'string' ? error.cause.name : undefined,
+      message: typeof error?.message === 'string' ? error.message.slice(0, 500) : undefined,
     });
     throw new GeminiAnalysisError(GEMINI_PROVIDER_FAILURE, 502, 'The visual analysis provider is unavailable.');
   }

@@ -40,6 +40,14 @@ test('static entry exposes the complete capture-to-export journey without extern
   }
 });
 
+test('static entry provides a local product favicon', async () => {
+  const [html, favicon] = await Promise.all([source('index.html'), source('favicon.svg')]);
+
+  assert.match(html, /<link[^>]+rel="icon"[^>]+href="\.\/favicon\.svg"/);
+  assert.match(favicon, /<svg[^>]+viewBox="0 0 64 64"/);
+  assert.doesNotMatch(favicon, /(?:href|src)=["']https?:\/\//);
+});
+
 test('static entry includes evidence language, dual prompt views, example analysis and local canvas art', async () => {
   const html = await source('index.html');
 
