@@ -56,9 +56,15 @@ test('runtime config requires an explicit public origin in production and never 
   const config = readRuntimeConfig({
     NODE_ENV: 'production',
     PUBLIC_APP_ORIGIN: 'https://uitoprompt.com/',
+    ADDITIONAL_ALLOWED_ORIGINS: 'https://www.uitoprompt.com, https://ui-to-prompt.vercel.app/',
     GEMINI_API_KEY: 'secret',
   });
   assert.equal(config.publicOrigin, 'https://uitoprompt.com');
+  assert.deepEqual(config.allowedOrigins, [
+    'https://uitoprompt.com',
+    'https://www.uitoprompt.com',
+    'https://ui-to-prompt.vercel.app',
+  ]);
   assert.equal(config.geminiApiKey, 'secret');
   assert.equal(config.urlAnalysisEnabled, false);
   assert.equal(config.geminiTimeoutMs, 60_000);

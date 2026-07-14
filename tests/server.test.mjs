@@ -149,7 +149,7 @@ test('analyze-image uses a fixed production origin and only passes bounded, veri
 
   await withServer(
     {
-      allowedOrigin: 'https://uitoprompt.com',
+      allowedOrigin: ['https://uitoprompt.com', 'https://ui-to-prompt.vercel.app'],
       maxImageBytes: 1024,
       maxImagePixels: 4,
       analyzeVisual: async (input) => {
@@ -168,6 +168,13 @@ test('analyze-image uses a fixed production origin and only passes bounded, veri
       assert.equal(received.image.mimeType, 'image/png');
       assert.equal(received.image.bytes, 70);
       assert.equal(received.sourceRef, 'upload:reference.png');
+
+      const legacyAlias = await fetch(`${baseUrl}/api/analyze-image`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://ui-to-prompt.vercel.app' },
+        body: JSON.stringify({ image, rightsMode: 'style-only', sourceName: 'reference.png' }),
+      });
+      assert.equal(legacyAlias.status, 200);
 
       const crossOrigin = await fetch(`${baseUrl}/api/analyze-image`, {
         method: 'POST',

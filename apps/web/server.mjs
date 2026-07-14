@@ -72,18 +72,22 @@ async function readJsonBody(request, maxBytes = MAX_JSON_BYTES) {
 }
 
 function sameOriginRequest(request, allowedOrigin) {
-  const expectedOrigin = allowedOrigin ?? `${request.socket.encrypted ? 'https' : 'http'}://${request.headers.host}`;
   let requestOrigin;
   try {
     requestOrigin = new URL(request.headers.origin).origin;
   } catch {
-    requestOrigin = null;
-  }
-  try {
-    return requestOrigin === new URL(expectedOrigin).origin;
-  } catch {
     return false;
   }
+  const expectedOrigins = Array.isArray(allowedOrigin)
+    ? allowedOrigin
+    : [allowedOrigin ?? `${request.socket.encrypted ? 'https' : 'http'}://${request.headers.host}`];
+  return expectedOrigins.some((expectedOrigin) => {
+    try {
+      return requestOrigin === new URL(expectedOrigin).origin;
+    } catch {
+      return false;
+    }
+  });
 }
 
 function sourceRefFor(sourceName) {
@@ -310,7 +314,7 @@ if (import.meta.url === invokedPath) {
   const port = Number.parseInt(process.env.PORT ?? '4173', 10);
   const host = process.env.HOST ?? (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
   const server = createWebServer({
-    allowedOrigin: config.publicOrigin,
+    allowedOrigin: config.allowedOrigins,
     urlAnalysisEnabled: config.urlAnalysisEnabled,
     maxImageBytes: config.maxImageBytes,
     maxImagePixels: config.maxImagePixels,

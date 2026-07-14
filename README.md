@@ -285,7 +285,9 @@ User-supplied webpages are hostile input. UItoPrompt therefore:
 
 Read [`SECURITY.md`](./SECURITY.md) before exposing URL capture to untrusted users.
 
-> **Deployment boundary:** the production container, server-side Gemini path, and Cloud Run manifest are ready, but `uitoprompt.com` has not completed DNS cutover. The public hosted version starts with image analysis; arbitrary webpage capture stays disabled until a separate worker, queue, controlled egress, and public rate limits are deployed and verified.
+> **Deployment boundary:** the production server-side Gemini path is live. `uitoprompt.com` is attached to the deployment and awaits DNS cutover at the registrar. The public hosted version starts with image analysis; arbitrary webpage capture stays disabled until a separate worker, queue, controlled egress, and public rate limits are deployed and verified.
+
+For the primary domain, set `PUBLIC_APP_ORIGIN=https://uitoprompt.com`. During a controlled migration only, `ADDITIONAL_ALLOWED_ORIGINS` may list exact HTTPS origins (for example, `https://www.uitoprompt.com,https://ui-to-prompt.vercel.app`); wildcards are rejected. Keep `GEMINI_API_KEY` exclusively in the host's encrypted environment store. The default active analysis model is `gemini-3.1-flash-lite`.
 
 ## Verification
 

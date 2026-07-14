@@ -30,7 +30,8 @@ test('Vercel target stages only public assets and exposes server-side image and 
 
 test('Vercel image function keeps the fixed-origin gate before provider work', async () => {
   process.env.NODE_ENV = 'production';
-  process.env.PUBLIC_APP_ORIGIN = 'https://ui-to-prompt.vercel.app';
+  process.env.PUBLIC_APP_ORIGIN = 'https://uitoprompt.com';
+  process.env.ADDITIONAL_ALLOWED_ORIGINS = 'https://www.uitoprompt.com,https://ui-to-prompt.vercel.app';
   process.env.GEMINI_API_KEY = 'test-key';
   const { default: imageFunction } = await import(`../api/analyze-image.mjs?test=${Date.now()}`);
 
@@ -41,7 +42,7 @@ test('Vercel image function keeps the fixed-origin gate before provider work', a
   }));
   assert.equal(wrongOrigin.status, 403);
 
-  const invalidImage = await imageFunction.fetch(new Request('https://ui-to-prompt.vercel.app/api/analyze-image', {
+  const invalidImage = await imageFunction.fetch(new Request('https://uitoprompt.com/api/analyze-image', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: 'https://ui-to-prompt.vercel.app' },
     body: JSON.stringify({ image: { mimeType: 'image/png', base64: Buffer.from('not a png').toString('base64') } }),

@@ -12,9 +12,9 @@ function positiveInteger(value, fallback, name) {
   return parsed;
 }
 
-function parseOrigin(value, { required = false } = {}) {
+function parseOrigin(value, { required = false, name = 'PUBLIC_APP_ORIGIN' } = {}) {
   if (value === undefined || value === '') {
-    if (required) throw new Error('PUBLIC_APP_ORIGIN is required in production.');
+    if (required) throw new Error(`${name} is required in production.`);
     return undefined;
   }
 
@@ -22,12 +22,22 @@ function parseOrigin(value, { required = false } = {}) {
   try {
     url = new URL(value);
   } catch {
-    throw new Error('PUBLIC_APP_ORIGIN must be an absolute http(s) origin.');
+    throw new Error(`${name} must be an absolute http(s) origin.`);
   }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
-    throw new Error('PUBLIC_APP_ORIGIN must be an absolute http(s) origin without a path, credentials, query, or fragment.');
+    throw new Error(`${name} must be an absolute http(s) origin without a path, credentials, query, or fragment.`);
   }
   return url.origin;
+}
+
+function parseAdditionalOrigins(value) {
+  if (value === undefined || value === '') return [];
+  if (typeof value !== 'string') throw new Error('ADDITIONAL_ALLOWED_ORIGINS must be a comma-separated list of origins.');
+  return value.split(',').map((origin) => {
+    const trimmed = origin.trim();
+    if (!trimmed) throw new Error('ADDITIONAL_ALLOWED_ORIGINS must not contain empty origins.');
+    return parseOrigin(trimmed, { required: true, name: 'ADDITIONAL_ALLOWED_ORIGINS' });
+  });
 }
 
 export function readRuntimeConfig(env = process.env) {
@@ -36,6 +46,7 @@ export function readRuntimeConfig(env = process.env) {
     ? `https://${env.VERCEL_URL.trim()}`
     : undefined;
   const publicOrigin = parseOrigin(env.PUBLIC_APP_ORIGIN ?? vercelOrigin, { required: production });
+  const allowedOrigins = Object.freeze([...new Set([publicOrigin, ...parseAdditionalOrigins(env.ADDITIONAL_ALLOWED_ORIGINS)].filter(Boolean))]);
   const geminiModel = (env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL).trim();
   if (!geminiModel) throw new Error('GEMINI_MODEL must not be empty.');
 
@@ -52,6 +63,7 @@ export function readRuntimeConfig(env = process.env) {
 
   return Object.freeze({
     publicOrigin,
+    allowedOrigins,
     geminiApiKey,
     geminiModel,
     geminiTimeoutMs,

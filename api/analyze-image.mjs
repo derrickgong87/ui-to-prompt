@@ -26,7 +26,7 @@ function json(status, payload, extraHeaders = {}) {
 
 function hasAllowedOrigin(request) {
   try {
-    return new URL(request.headers.get('origin')).origin === runtime.publicOrigin;
+    return runtime.allowedOrigins.includes(new URL(request.headers.get('origin')).origin);
   } catch {
     return false;
   }
