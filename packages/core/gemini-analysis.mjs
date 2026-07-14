@@ -132,7 +132,7 @@ async function loadGeminiClient(apiKey, loadClient) {
 
 export async function analyzeGeminiImage({
   apiKey,
-  model = 'gemini-3.5-flash',
+  model = 'gemini-2.5-flash',
   image,
   sourceRef = 'upload:local-image',
   rightsMode = 'style-only',
@@ -168,7 +168,7 @@ export async function analyzeGeminiImage({
         responseMimeType: 'application/json',
         responseJsonSchema: STYLE_DTO_SCHEMA,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        thinkingConfig: { thinkingLevel: 'minimal' },
+        thinkingConfig: { thinkingLevel: 'low' },
         httpOptions: {
           timeout: providerTimeoutMs,
           retryOptions: { attempts: 1 },
