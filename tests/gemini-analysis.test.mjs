@@ -98,6 +98,10 @@ test('Gemini image analysis sends an inline image to the server SDK and maps a c
   assert.equal(calls[0].input[1].data, IMAGE.base64);
   assert.match(calls[0].input[0].text, /do not reproduce logos/i);
   assert.equal(calls[0].response_format.mime_type, 'application/json');
+  assert.deepEqual(calls[0].generation_config, {
+    max_output_tokens: 2_048,
+    thinking_level: 'minimal',
+  });
 });
 
 test('Gemini analysis fails closed for missing credentials, invalid model output, and timeouts', async () => {
