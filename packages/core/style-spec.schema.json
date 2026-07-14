@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uitoprompt.com/schemas/style-spec.v1.json",
+  "title": "UI to Prompt StyleSpec",
+  "description": "An evidence-backed, uncertainty-aware description of a visual system.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "source", "tokens", "sections"],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": {
+          "enum": ["url", "image"]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "tokens": {
+      "$ref": "#/$defs/tokens"
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visualIntent",
+        "layout",
+        "color",
+        "typography",
+        "spacing",
+        "surfaces",
+        "components",
+        "imagery",
+        "iconography",
+        "responsiveness",
+        "interactions",
+        "motion",
+        "accessibility",
+        "content",
+        "constraints"
+      ],
+      "properties": {
+        "visualIntent": { "$ref": "#/$defs/section" },
+        "layout": { "$ref": "#/$defs/section" },
+        "color": { "$ref": "#/$defs/section" },
+        "typography": { "$ref": "#/$defs/section" },
+        "spacing": { "$ref": "#/$defs/section" },
+        "surfaces": { "$ref": "#/$defs/section" },
+        "components": { "$ref": "#/$defs/section" },
+        "imagery": { "$ref": "#/$defs/section" },
+        "iconography": { "$ref": "#/$defs/section" },
+        "responsiveness": { "$ref": "#/$defs/section" },
+        "interactions": { "$ref": "#/$defs/section" },
+        "motion": { "$ref": "#/$defs/section" },
+        "accessibility": { "$ref": "#/$defs/section" },
+        "content": { "$ref": "#/$defs/section" },
+        "constraints": { "$ref": "#/$defs/section" }
+      }
+    }
+  },
+  "$defs": {
+    "tokenValue": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "number" },
+        { "type": "null" }
+      ]
+    },
+    "tokenMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/tokenValue"
+      }
+    },
+    "typographyTokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fontFamilies": { "$ref": "#/$defs/tokenMap" },
+        "fontSizes": { "$ref": "#/$defs/tokenMap" },
+        "fontWeights": { "$ref": "#/$defs/tokenMap" },
+        "letterSpacing": { "$ref": "#/$defs/tokenMap" },
+        "lineHeights": { "$ref": "#/$defs/tokenMap" }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "colors": { "$ref": "#/$defs/tokenMap" },
+        "spacing": { "$ref": "#/$defs/tokenMap" },
+        "radii": { "$ref": "#/$defs/tokenMap" },
+        "typography": { "$ref": "#/$defs/typographyTokens" },
+        "shadows": { "$ref": "#/$defs/tokenMap" },
+        "borders": { "$ref": "#/$defs/tokenMap" },
+        "durations": { "$ref": "#/$defs/tokenMap" },
+        "easing": { "$ref": "#/$defs/tokenMap" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "ref"],
+      "properties": {
+        "label": {
+          "enum": [
+            "screenshot",
+            "dom",
+            "css",
+            "font",
+            "animation",
+            "network",
+            "ocr",
+            "visual-model",
+            "user",
+            "derived"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "confidence", "evidence", "summary"],
+      "properties": {
+        "status": {
+          "enum": ["observed", "inferred", "unknown"]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "details": {
+          "oneOf": [
+            { "type": "object" },
+            { "type": "array" }
+          ]
+        },
+        "unknownReason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "unknown" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["unknownReason"]
+          },
+          "else": {
+            "properties": {
+              "evidence": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
