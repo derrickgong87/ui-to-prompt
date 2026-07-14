@@ -35,3 +35,10 @@ test('readme states truthful capability and explicit non-goals', () => {
   assert.match(readme, /single screenshot|单张截图/i);
   assert.match(readme, /does not generate application code|不生成应用代码/i);
 });
+
+test('launch copy starts with a human design-reference scenario', () => {
+  const promo = readFileSync(join(root, 'docs', 'promo-cn.md'), 'utf8');
+  assert.match(promo, /喜欢.*说不清/);
+  assert.match(promo, /uitoprompt\.com/);
+  assert.doesNotMatch(promo, /审核后上线/);
+});
