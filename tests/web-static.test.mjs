@@ -163,3 +163,16 @@ test('hero headline has an intentional break that prevents a mobile orphan and o
 
   assert.match(html, /<em>可复用<\/em><br\s*\/>的设计规则。/);
 });
+
+test('launch poster tells the evidence-to-skill story without external assets', async () => {
+  const [html, css] = await Promise.all([source('poster.html'), source('poster.css')]);
+
+  assert.doesNotMatch(html, /(?:src|href)="https?:\/\//);
+  for (const message of ['给我一个界面', '视觉证据', 'StyleSpec', 'Systematic Prompt', 'SKILL.md']) {
+    assert.match(html, new RegExp(message));
+  }
+  assert.match(css, /width:\s*1080px/);
+  assert.match(css, /height:\s*1350px/);
+  assert.match(css, /#3157f5/i);
+  assert.match(css, /#ddf45a/i);
+});
