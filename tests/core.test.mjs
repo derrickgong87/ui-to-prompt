@@ -26,6 +26,10 @@ function section(summary, details = {}) {
 function makeValidSpec() {
   return {
     schemaVersion: '1.0',
+    metadata: {
+      title: 'Example editorial landing page',
+      rightsMode: 'style-only',
+    },
     source: {
       kind: 'url',
       ref: 'https://example.com/',
@@ -100,6 +104,45 @@ test('validates evidence-labelled sections and confidence ranges', () => {
   assert.match(result.errors.join('\n'), /sections\.layout\.confidence/);
   assert.match(result.errors.join('\n'), /sections\.layout\.evidence\[0\]\.label/);
   assert.match(result.errors.join('\n'), /sections\.layout\.evidence\[0\]\.ref/);
+});
+
+test('requires canonical metadata and constrains the rights mode', () => {
+  const missingMetadata = makeValidSpec();
+  delete missingMetadata.metadata;
+
+  const missingResult = validateStyleSpec(missingMetadata);
+  assert.equal(missingResult.valid, false);
+  assert.match(missingResult.errors.join('\n'), /metadata is required/);
+
+  const invalidRights = makeValidSpec();
+  invalidRights.metadata.rightsMode = 'copy-anything';
+
+  const rightsResult = validateStyleSpec(invalidRights);
+  assert.equal(rightsResult.valid, false);
+  assert.match(rightsResult.errors.join('\n'), /metadata\.rightsMode/);
+
+  const authorized = makeValidSpec();
+  authorized.metadata.rightsMode = 'authorized-reconstruction';
+  assert.equal(validateStyleSpec(authorized).valid, true);
+});
+
+test('accepts all six canonical evidence statuses', () => {
+  const statuses = ['observed', 'computed', 'inferred', 'translated', 'user', 'unknown'];
+
+  for (const status of statuses) {
+    const spec = makeValidSpec();
+    spec.sections.layout.status = status;
+    if (status === 'unknown') {
+      spec.sections.layout.confidence = 0;
+      spec.sections.layout.evidence = [];
+      spec.sections.layout.unknownReason = 'No layout evidence was supplied.';
+    }
+    assert.equal(
+      validateStyleSpec(spec).valid,
+      true,
+      `expected status ${status} to be valid`,
+    );
+  }
 });
 
 test('rejects a missing required section and requires an explicit reason for unknowns', () => {
@@ -186,9 +229,28 @@ test('compiles exactly fifteen deterministic systematic-prompt sections', () => 
   const promptA = compileSystematicPrompt(first);
   const promptB = compileSystematicPrompt(second);
 
-  assert.equal(PROMPT_SECTION_ORDER.length, 15);
+  assert.deepEqual(PROMPT_SECTION_ORDER.map(({ title }) => title), [
+    'Mission and scope',
+    'Authority and rights boundary',
+    'Source-of-truth order',
+    'Visual north star',
+    'Non-negotiable invariants',
+    'Design tokens',
+    'Layout and responsive behavior',
+    'Component grammar',
+    'Content density and imagery',
+    'Interaction and motion',
+    'Accessibility and performance',
+    'Negative constraints',
+    'Unknown-handling rules',
+    'Acceptance checklist',
+    'Iteration protocol',
+  ]);
   assert.equal((promptA.match(/^## \d+\. /gm) ?? []).length, 15);
   assert.equal(promptA, promptB);
+  assert.match(promptA, /^## 1\. Mission and scope$/m);
+  assert.match(promptA, /^## 15\. Iteration protocol$/m);
+  assert.match(promptA, /Rights mode: style-only/);
   assert.match(promptA, /Confidence: 90%/);
   assert.match(promptA, /Evidence: \[screenshot\] capture:\/\/desktop\/home/);
   assert.match(promptA, /--ui-color-canvas-bg: #ffffff/);

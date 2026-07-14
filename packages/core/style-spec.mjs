@@ -19,7 +19,15 @@ export const REQUIRED_STYLE_SECTIONS = Object.freeze([
 ]);
 
 const VALID_SOURCE_KINDS = new Set(['url', 'image']);
-const VALID_STATUSES = new Set(['observed', 'inferred', 'unknown']);
+const VALID_RIGHTS_MODES = new Set(['style-only', 'authorized-reconstruction']);
+const VALID_STATUSES = new Set([
+  'observed',
+  'computed',
+  'inferred',
+  'translated',
+  'user',
+  'unknown',
+]);
 const VALID_EVIDENCE_LABELS = new Set([
   'screenshot',
   'dom',
@@ -156,7 +164,7 @@ function validateSection(section, path, errors) {
   }
 
   if (!VALID_STATUSES.has(section.status)) {
-    errors.push(`${path}.status must be observed, inferred, or unknown`);
+    errors.push(`${path}.status must be observed, computed, inferred, translated, user, or unknown`);
   }
 
   if (
@@ -196,6 +204,17 @@ export function validateStyleSpec(spec) {
 
   if (spec.schemaVersion !== STYLE_SPEC_VERSION) {
     errors.push(`schemaVersion must equal ${STYLE_SPEC_VERSION}`);
+  }
+
+  if (!isPlainObject(spec.metadata)) {
+    errors.push('metadata is required and must be an object');
+  } else {
+    if (!isNonEmptyString(spec.metadata.title)) {
+      errors.push('metadata.title must be a non-empty string');
+    }
+    if (!VALID_RIGHTS_MODES.has(spec.metadata.rightsMode)) {
+      errors.push('metadata.rightsMode must be style-only or authorized-reconstruction');
+    }
   }
 
   if (!isPlainObject(spec.source)) {

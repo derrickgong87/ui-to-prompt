@@ -5,10 +5,24 @@
   "description": "An evidence-backed, uncertainty-aware description of a visual system.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "source", "tokens", "sections"],
+  "required": ["schemaVersion", "metadata", "source", "tokens", "sections"],
   "properties": {
     "schemaVersion": {
       "const": "1.0"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "rightsMode"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rightsMode": {
+          "enum": ["style-only", "authorized-reconstruction"]
+        }
+      }
     },
     "source": {
       "type": "object",
@@ -139,7 +153,7 @@
       "required": ["status", "confidence", "evidence", "summary"],
       "properties": {
         "status": {
-          "enum": ["observed", "inferred", "unknown"]
+          "enum": ["observed", "computed", "inferred", "translated", "user", "unknown"]
         },
         "confidence": {
           "type": "number",
