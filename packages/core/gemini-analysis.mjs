@@ -132,7 +132,7 @@ async function loadGeminiClient(apiKey, loadClient) {
 
 export async function analyzeGeminiImage({
   apiKey,
-  model = 'gemini-2.5-flash',
+  model = 'gemini-flash-latest',
   image,
   sourceRef = 'upload:local-image',
   rightsMode = 'style-only',
@@ -189,22 +189,6 @@ export async function analyzeGeminiImage({
     return createStyleSpec(dto, { sourceRef: sourceRef.trim(), rightsMode });
   } catch (error) {
     if (error instanceof GeminiAnalysisError) throw error;
-    if (Number.isSafeInteger(error?.status) && error.status === 404 && typeof provider?.models?.list === 'function') {
-      try {
-        const pager = await provider.models.list({
-          config: { httpOptions: { timeout: 5_000, retryOptions: { attempts: 1 } } },
-        });
-        const availableModels = Array.isArray(pager?.page)
-          ? pager.page
-            .map((entry) => typeof entry?.name === 'string' ? entry.name : undefined)
-            .filter((name) => name?.includes('gemini'))
-            .slice(0, 40)
-          : [];
-        console.error('[ui-to-prompt] Gemini accessible models', { availableModels });
-      } catch {
-        // The original provider error is the useful customer-facing boundary.
-      }
-    }
     console.error('[ui-to-prompt] Gemini provider call failed', {
       name: typeof error?.name === 'string' ? error.name : 'UnknownError',
       status: Number.isSafeInteger(error?.status) ? error.status : undefined,

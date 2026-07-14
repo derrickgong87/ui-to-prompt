@@ -91,7 +91,7 @@ test('Gemini image analysis sends an inline image to the stable server SDK path 
   assert.equal(result.summary, 'Calm editorial hierarchy with generous whitespace.');
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].model, 'gemini-2.5-flash');
+  assert.equal(calls[0].model, 'gemini-flash-latest');
   assert.equal(calls[0].contents[0].inlineData.mimeType, 'image/png');
   assert.equal(calls[0].contents[0].inlineData.data, IMAGE.base64);
   assert.match(calls[0].contents[1].text, /do not reproduce logos/i);
