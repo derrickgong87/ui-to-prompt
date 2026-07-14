@@ -1,0 +1,25 @@
+{
+  "name": "ui-to-prompt",
+  "version": "0.1.0",
+  "description": "Turn webpages and images into evidence-backed, reusable systematic design prompts and AI Skills.",
+  "type": "module",
+  "private": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node apps/web/server.mjs",
+    "test": "node --test",
+    "test:skill": "python tests/test_skill_scripts.py -v",
+    "verify": "npm test && npm run test:skill",
+    "package:review": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-release.ps1"
+  },
+  "keywords": [
+    "systematic-prompt",
+    "design-system",
+    "ai-skill",
+    "web-forensics",
+    "ui-analysis"
+  ]
+}
