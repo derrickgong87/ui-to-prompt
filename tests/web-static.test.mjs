@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { validateStyleSpec } from '../packages/core/style-spec.mjs';
 
 const readFileAsync = promisify(readFile);
 const publicDir = new URL('../apps/web/public/', import.meta.url);
@@ -108,8 +109,10 @@ test('export helpers create portable JSON, Markdown and CSS artifacts', () => {
   const sample = loadClassicScript('sample-data.js');
 
   const json = JSON.parse(app.createExport('json', sample));
-  assert.equal(json.meta.title, sample.meta.title);
-  assert.equal(json.promptSections.length, sample.promptSections.length);
+  assert.equal(json.schemaVersion, '1.0');
+  assert.equal(json.metadata.title, sample.meta.title);
+  assert.equal(Object.keys(json.sections).length, 15);
+  assert.equal(validateStyleSpec(json).valid, true);
 
   const markdown = app.createExport('markdown', sample);
   assert.match(markdown, /^# UItoPrompt Style Skill/m);
@@ -175,4 +178,78 @@ test('launch poster tells the evidence-to-skill story without external assets', 
   assert.match(css, /height:\s*1350px/);
   assert.match(css, /#3157f5/i);
   assert.match(css, /#ddf45a/i);
+});
+
+test('real URL evidence produces source-specific output instead of the bundled sample', () => {
+  const app = loadClassicScript('app.js');
+  const sample = loadClassicScript('sample-data.js');
+  const result = app.buildUrlDataset(
+    {
+      source: { requestedUrl: 'https://example.com/', finalUrl: 'https://example.com/' },
+      capture: { capturedAt: '2026-07-14T08:00:00.000Z', viewport: { width: 1280, height: 720 } },
+      document: { title: 'A distinct source' },
+      elements: [
+        { tagName: 'body', styles: { color: 'rgb(17, 18, 19)', 'background-color': 'rgb(245, 244, 239)', 'font-family': 'Inter, sans-serif' } },
+        { tagName: 'a', styles: { color: 'rgb(10, 90, 220)', 'background-color': 'rgba(0, 0, 0, 0)', 'font-family': 'Inter, sans-serif' } },
+      ],
+      assets: [],
+      animations: [],
+      blockedRequests: [],
+      warnings: [],
+    },
+    sample,
+    'style',
+  );
+
+  assert.equal(result.meta.sourceUrl, 'https://example.com/');
+  assert.equal(result.meta.viewport, '1280 × 720');
+  assert.notEqual(result.meta.title, sample.meta.title);
+  assert.equal(result.tokens.colors.canvas, '#f5f4ef');
+  assert.equal(result.tokens.colors.ink, '#111213');
+  assert.equal(result.promptSections.length, 15);
+  assert.match(result.promptSections[0].content, /1280 × 720/);
+});
+
+test('image evidence keeps pixel facts and makes hidden implementation details unknown', () => {
+  const app = loadClassicScript('app.js');
+  const sample = loadClassicScript('sample-data.js');
+  const result = app.buildImageDataset(
+    { width: 1600, height: 1000, colors: ['#efece3', '#171816', '#3157f5', '#ddf45a'] },
+    sample,
+    { sourceType: 'screenshot', filename: 'screen.png', mode: 'style' },
+  );
+
+  assert.equal(result.meta.sourceUrl, 'screen.png');
+  assert.equal(result.meta.viewport, '1600 × 1000');
+  assert.equal(result.tokens.colors.canvas, '#efece3');
+  assert.equal(result.tokens.colors.ink, '#171816');
+  assert.match(result.brief.limits.join(' '), /DOM/);
+  assert.match(result.brief.limits.join(' '), /断点/);
+  assert.equal(result.promptSections.length, 15);
+  assert.equal(result.promptSections.find((section) => section.id === 'layout-responsive').evidenceType, 'Unknown');
+});
+
+test('analysis runtime reads URL and image inputs and rejects CSS token injection', async () => {
+  const appSource = await source('app.js');
+  const app = loadClassicScript('app.js');
+  const sample = loadClassicScript('sample-data.js');
+
+  assert.match(appSource, /fetch\(['"]\/api\/analyze-url/);
+  assert.match(appSource, /createImageBitmap/);
+  assert.match(appSource, /getImageData/);
+
+  const hostile = JSON.parse(JSON.stringify(sample));
+  hostile.tokens.colors.canvas = 'red; } body { display:none }';
+  assert.throws(() => app.createExport('css', hostile), /Unsafe CSS token/);
+});
+
+test('mobile result navigation exposes StyleSpec, centers the active tab and keeps 44px targets', async () => {
+  const [html, css, appSource] = await Promise.all([source('index.html'), source('styles.css'), source('app.js')]);
+
+  assert.match(html, /StyleSpec · Style System/);
+  assert.match(html, /15 个可独立检查的段落/);
+  assert.match(appSource, /scrollWidth\s*>\s*tabs\.clientWidth/);
+  assert.match(appSource, /scrollIntoView\(\{[^}]*inline:\s*['"]center['"]/);
+  assert.match(css, /\.source-tabs button,[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /\.site-nav a[\s\S]*?min-height:\s*44px/);
 });

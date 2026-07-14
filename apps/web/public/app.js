@@ -76,6 +76,258 @@
     ];
   }
 
+  const canonicalPromptSections = [
+    ['mission-scope', 'Mission and scope'],
+    ['authority-rights', 'Authority and rights boundary'],
+    ['source-truth-order', 'Source-of-truth order'],
+    ['visual-north-star', 'Visual north star'],
+    ['non-negotiables', 'Non-negotiable invariants'],
+    ['design-tokens', 'Design tokens'],
+    ['layout-responsive', 'Layout and responsive behavior'],
+    ['component-grammar', 'Component grammar'],
+    ['content-imagery', 'Content density and imagery'],
+    ['interaction-motion', 'Interaction and motion'],
+    ['accessibility', 'Accessibility and performance'],
+    ['negative-constraints', 'Negative constraints'],
+    ['unknown-handling', 'Unknown-handling rules'],
+    ['acceptance-checklist', 'Acceptance checklist'],
+    ['iteration-protocol', 'Iteration protocol'],
+  ];
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function rgbToHex(value) {
+    const text = String(value || '').trim().toLowerCase();
+    if (/^#[0-9a-f]{6}$/.test(text)) return text;
+    if (/^#[0-9a-f]{3}$/.test(text)) {
+      return `#${text.slice(1).split('').map((part) => part + part).join('')}`;
+    }
+    const match = text.match(/^rgba?\(\s*(\d{1,3})\D+(\d{1,3})\D+(\d{1,3})(?:\D+([\d.]+))?\s*\)$/);
+    if (!match || (match[4] != null && Number(match[4]) === 0)) return null;
+    const channels = match.slice(1, 4).map((channel) => Math.max(0, Math.min(255, Number(channel))));
+    return `#${channels.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  function luminance(hex) {
+    const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+    return channels.reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+  }
+
+  function saturation(hex) {
+    const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+    return Math.max(...channels) - Math.min(...channels);
+  }
+
+  function mostFrequent(values, fallback) {
+    const counts = new Map();
+    values.filter(Boolean).forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+    return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] || fallback;
+  }
+
+  function stylesFor(elements, property) {
+    return (elements || []).map((element) => element?.styles?.[property]).filter(Boolean);
+  }
+
+  function colorSystem(colors, fallback) {
+    const normalized = [...new Set(colors.map(rgbToHex).filter(Boolean))];
+    const ordered = normalized.sort((left, right) => luminance(left) - luminance(right));
+    const darkest = ordered[0] || fallback.ink;
+    const lightest = ordered.at(-1) || fallback.canvas;
+    const accent = [...normalized].sort((left, right) => saturation(right) - saturation(left))[0] || fallback.cobalt;
+    return {
+      ...fallback,
+      canvas: lightest,
+      surface: lightest,
+      ink: darkest,
+      muted: ordered[Math.min(1, ordered.length - 1)] || fallback.muted,
+      cobalt: accent,
+      signal: normalized.find((color) => color !== accent && saturation(color) > 0.25) || fallback.signal,
+    };
+  }
+
+  function buildPromptSections(context) {
+    const rights = context.mode === 'rebuild'
+      ? '仅在已确认拥有或获得授权的范围内重建；权利状态不能从输入本身推断。'
+      : '只提炼可迁移的视觉语法；移除来源品牌、Logo、原文、图像、专有图标与受保护资产。';
+    const status = context.sourceType === 'visual' ? 'Translated' : context.sourceType === 'url' ? 'Observed' : 'Inferred';
+    const content = [
+      `为新的原创产品实现从${context.sourceLabel}提炼的视觉系统。当前唯一验证视口为 ${context.viewport}；输出是规则包，不是下游应用代码。`,
+      rights,
+      `冲突时依次采用：输入中的直接证据、程序测量、跨元素一致模式、显式推断、通用设计惯例。${context.unknownBoundary}`,
+      `以“${context.northStar}”作为视觉北极星；保留构图节奏、对比关系与语义色彩，不保留来源身份。`,
+      `保持主画布 ${context.colors.canvas}、正文 ${context.colors.ink}、主要强调色 ${context.colors.cobalt} 的角色关系；层级必须由排版、间距和边界共同建立。`,
+      `颜色角色：canvas ${context.colors.canvas}，surface ${context.colors.surface}，ink ${context.colors.ink}，accent ${context.colors.cobalt}。字体证据：${context.fontFamily}. 未观察到的精确字重与字体文件不得补写为事实。`,
+      `${context.layoutRule} ${context.unknownBoundary}`,
+      '从重复边界、分组、按钮和文字层级抽象组件语法。只把可见或测量到的模式写成硬规则；其余作为待验证候选。',
+      '保持与参考相近的信息密度、留白比例和图像占比，但使用原创信息架构、文案与素材。不要把来源内容当作占位内容复用。',
+      `可见交互与动效仅按证据记录。${context.motionRule} 所有新增动效必须支持 prefers-reduced-motion。`,
+      '正文对比度目标至少 4.5:1，所有操作可键盘到达并具有清晰 focus-visible；导出前检查溢出、资源体积与主要视口性能。',
+      '禁止复制来源品牌和内容；禁止虚构 DOM、断点、隐藏状态、Hover、字体文件或像素级相似度；避免紫色渐变、玻璃拟态和无证据的模板化组件。',
+      `${context.unknownBoundary} 未知项必须显式保留，并给出最保守的原创 fallback 与下一步取证方式。`,
+      `在 ${context.viewport} 对照颜色角色、标题层级、主要间距、边界和内容密度。验证原创资产、键盘焦点、缩减动效以及每条规则的证据等级。`,
+      '先修页面拓扑与主要容器，再修排版换行、间距、素材裁切、颜色效果和动效。每轮只处理最高影响误差，并回归全部已有证据。',
+    ];
+    const evidenceTypes = ['Observed', 'User', 'Computed', status, 'Computed', 'Computed', context.sourceType === 'url' ? 'Observed' : 'Unknown', status, status, 'Unknown', 'Computed', 'User', 'Unknown', 'Computed', 'Computed'];
+    return canonicalPromptSections.map(([id, title], index) => ({
+      id,
+      title,
+      evidenceType: evidenceTypes[index],
+      confidence: evidenceTypes[index] === 'Unknown' ? 'low' : evidenceTypes[index] === 'Inferred' || evidenceTypes[index] === 'Translated' ? 'medium' : 'high',
+      content: content[index],
+    }));
+  }
+
+  function finishDataset(data, context) {
+    data.promptSections = buildPromptSections(context);
+    data.useNow = [
+      `为原创产品采用“${context.northStar}”的视觉方向。`,
+      `使用 ${context.colors.canvas} 画布、${context.colors.surface} 工作面、${context.colors.ink} 正文与 ${context.colors.cobalt} 强调色，保持来自证据的相对角色。`,
+      context.layoutRule,
+      context.mode === 'rebuild'
+        ? '仅在权利已确认的范围内重建；没有授权的资产全部替换。'
+        : '只保留视觉语言，不复制来源品牌、文案、Logo、图像、专有图标或受保护资产。',
+      context.unknownBoundary,
+    ].join('\n\n');
+    return data;
+  }
+
+  function buildUrlDataset(evidence, sample, mode = 'style') {
+    const data = clone(sample);
+    const elements = Array.isArray(evidence?.elements) ? evidence.elements : [];
+    const body = elements.find((element) => element.tagName === 'body') || elements.find((element) => element.tagName === 'html');
+    const background = rgbToHex(body?.styles?.['background-color']);
+    const ink = rgbToHex(body?.styles?.color);
+    const observedColors = [background, ink, ...stylesFor(elements, 'background-color'), ...stylesFor(elements, 'color')];
+    const colors = colorSystem(observedColors, data.tokens.colors);
+    if (background) colors.canvas = background;
+    if (ink) colors.ink = ink;
+    const fontFamily = mostFrequent(stylesFor(elements, 'font-family'), '未观察到可靠字体族');
+    const viewport = evidence?.capture?.viewport || {};
+    const viewportLabel = Number.isFinite(viewport.width) && Number.isFinite(viewport.height)
+      ? `${viewport.width} × ${viewport.height}`
+      : '未报告视口';
+    const finalUrl = evidence?.source?.finalUrl || evidence?.source?.requestedUrl || '未知 URL';
+    const hostname = (() => { try { return new URL(finalUrl).hostname; } catch { return '网页'; } })();
+
+    data.meta = {
+      ...data.meta,
+      title: `${evidence?.document?.title || hostname} — 风格提炼`,
+      sourceType: 'url',
+      sourceLabel: '公开网页 · 浏览器取证',
+      sourceUrl: finalUrl,
+      capturedAt: evidence?.capture?.capturedAt || new Date().toISOString(),
+      viewport: viewportLabel,
+      mode,
+      generator: 'UItoPrompt URL evidence 1.0',
+    };
+    data.evidenceSummary = {
+      observed: { count: elements.length, label: '浏览器事实', detail: '可见结构、计算样式与几何信息' },
+      computed: { count: new Set(observedColors.map(rgbToHex).filter(Boolean)).size, label: '程序测量', detail: '颜色角色、视口与重复样式' },
+      inferred: { count: 4, label: '系统推断', detail: '视觉原则、组件语法与迁移规则' },
+      unknown: { count: 4, label: '尚未观察', detail: '其他视口、登录态、完整交互与动态内容' },
+    };
+    data.tokens.colors = colors;
+    data.tokens.typography.display = `${fontFamily} · observed`;
+    data.tokens.typography.body = `${fontFamily} · observed`;
+    data.brief = {
+      northStar: `把 ${hostname} 的可见节奏转化为一套原创、可追溯的界面语法。`,
+      intent: '保留已测量的颜色角色、布局关系与排版节奏；删除来源身份和内容。',
+      invariants: [
+        `主画布使用 ${colors.canvas}，正文以 ${colors.ink} 建立基础对比。`,
+        `主要强调色 ${colors.cobalt} 只用于选择、链接或核心行动。`,
+        `字体族证据为 ${fontFamily}；不可用时选择指标接近的开源替代。`,
+        '观察、计算、推断与未知必须分开，不能把建议写成来源事实。',
+      ],
+      limits: ['目前只捕获一个视口，不能证明真实断点。', '登录态、Hover/Focus、动态数据与所有动效未必已触发。'],
+    };
+    data.validation = {
+      ...data.validation,
+      sourceLabel: `参考：${hostname}`,
+      note: '已使用真实浏览器证据生成规则；仍需用更多视口和交互状态补齐未知。',
+      checks: [
+        { label: '浏览器证据', status: 'pass', detail: `${elements.length} 个元素` },
+        { label: '颜色角色', status: observedColors.filter(Boolean).length ? 'pass' : 'review', detail: `${data.evidenceSummary.computed.count} 个归一化颜色` },
+        { label: '响应式', status: 'review', detail: '仅一个视口' },
+        { label: '权利边界', status: 'pass', detail: mode === 'style' ? '风格提炼' : '需确认授权' },
+      ],
+    };
+    return finishDataset(data, {
+      mode,
+      sourceType: 'url',
+      sourceLabel: '真实网页证据',
+      viewport: viewportLabel,
+      colors,
+      fontFamily,
+      northStar: data.brief.northStar,
+      layoutRule: `以 ${viewportLabel} 的可见几何和重复间距作为当前布局基准；其他宽度先采用保守流式重排。`,
+      motionRule: `${evidence?.animations?.length || 0} 个可见动画被记录；未触发状态仍为未知。`,
+      unknownBoundary: '单次网页捕获不能证明所有断点、登录态、隐藏状态、字体文件和运行时变化。',
+    });
+  }
+
+  function buildImageDataset(image, sample, { sourceType = 'screenshot', filename = 'local-image', mode = 'style' } = {}) {
+    const data = clone(sample);
+    const colors = colorSystem(image?.colors || [], data.tokens.colors);
+    const viewportLabel = `${image?.width || '?'} × ${image?.height || '?'}`;
+    const visualReference = sourceType === 'visual';
+    data.meta = {
+      ...data.meta,
+      title: `${filename} — ${visualReference ? '视觉转译' : '界面风格提炼'}`,
+      sourceType,
+      sourceLabel: visualReference ? '视觉参考 · 本地像素分析' : '界面截图 · 本地像素分析',
+      sourceUrl: filename,
+      capturedAt: new Date().toISOString(),
+      viewport: viewportLabel,
+      mode,
+      generator: 'UItoPrompt local pixel evidence 1.0',
+    };
+    data.tokens.colors = colors;
+    data.tokens.typography.display = '字体族未知 · 仅可观察字形外观';
+    data.tokens.typography.body = '字体族未知 · 仅可观察字形外观';
+    data.evidenceSummary = {
+      observed: { count: 2, label: '像素事实', detail: `图片尺寸 ${viewportLabel} 与可见构图` },
+      computed: { count: image?.colors?.length || 0, label: '程序测量', detail: '像素颜色聚类与角色映射' },
+      inferred: { count: 5, label: visualReference ? '视觉转译' : '系统推断', detail: '节奏、层级、形状与组件候选' },
+      unknown: { count: 6, label: '尚未观察', detail: 'DOM、字体文件、断点、隐藏状态、交互与动效' },
+    };
+    data.brief = {
+      northStar: visualReference ? '把参考图的构图、对比和节奏翻译为原创 Web UI。' : '把截图中可见的层级、色彩与留白转化为可执行规则。',
+      intent: visualReference ? '保留视觉原则，不复用原 artwork、文字或品牌。' : '提炼像素中可见的视觉系统，不假装知道源代码。',
+      invariants: [
+        `主色角色来自像素测量：${colors.canvas} / ${colors.ink} / ${colors.cobalt}。`,
+        '构图、密度与形状可作为推断；DOM 和组件语义不可从像素直接证明。',
+        '所有品牌、文案、图片与专有图标必须替换为原创内容。',
+        '响应式和交互建议必须标为 authored fallback，而不是观察事实。',
+      ],
+      limits: ['单张图片无法证明 DOM、语义结构与真实字体文件。', '源断点、隐藏状态、Hover/Focus、滚动行为和动效未知。'],
+    };
+    data.validation = {
+      ...data.validation,
+      sourceLabel: `参考：${filename}`,
+      note: '颜色与尺寸来自本地像素；结构、响应式和交互仍需额外证据验证。',
+      checks: [
+        { label: '图片读取', status: 'pass', detail: viewportLabel },
+        { label: '颜色聚类', status: image?.colors?.length ? 'pass' : 'review', detail: `${image?.colors?.length || 0} 个代表色` },
+        { label: '结构证据', status: 'review', detail: 'DOM 未知' },
+        { label: '权利边界', status: 'pass', detail: mode === 'style' ? '不复用来源资产' : '需确认授权' },
+      ],
+    };
+    return finishDataset(data, {
+      mode,
+      sourceType,
+      sourceLabel: visualReference ? '视觉参考图' : '单张界面截图',
+      viewport: viewportLabel,
+      colors,
+      fontFamily: '精确字体族与字体文件未知',
+      northStar: data.brief.northStar,
+      layoutRule: '将图片中的主要区块比例作为当前视口候选；窄屏采用内容优先的单栏 fallback，但不得声称这是来源断点。',
+      motionRule: '静态图片不包含时间信息，因此 Hover、Focus、滚动和动效全部未知。',
+      unknownBoundary: '单张静态图片无法证明精确字体族、DOM、语义结构、源断点、隐藏状态和动效。',
+    });
+  }
+
   function createMarkdown(data) {
     const sections = data.promptSections
       .map(
@@ -98,28 +350,102 @@ ${sections}
 
   function createCss(data) {
     const { colors, typography, spacing, radii, motion } = data.tokens;
+    const safeCssValue = (value, label) => {
+      const text = String(value ?? '').trim();
+      if (!text || text.length > 160 || /[;{}<>\u0000-\u001f]/.test(text) || /(?:url\s*\(|@import|expression\s*\()/i.test(text)) {
+        throw new Error(`Unsafe CSS token: ${label}`);
+      }
+      return text;
+    };
+    const safeFont = (value, label) => `"${safeCssValue(String(value).split(' · ')[0], label).replace(/["\\]/g, '')}"`;
     const colorLines = Object.entries(colors)
-      .map(([key, value]) => `  --color-${key}: ${value};`)
+      .map(([key, value]) => `  --color-${key}: ${safeCssValue(value, `color.${key}`)};`)
       .join('\n');
     return `:root {
 ${colorLines}
-  --font-display: "${typography.display.split(' · ')[0]}";
-  --font-body: "${typography.body.split(' · ')[0]}";
-  --font-mono: "${typography.mono.split(' · ')[0]}";
-  --space-base: ${spacing.base};
-  --radius-control: ${radii.control};
-  --radius-card: ${radii.card};
-  --radius-panel: ${radii.panel};
-  --motion-micro: ${motion.micro};
-  --motion-short: ${motion.short};
-  --motion-medium: ${motion.medium};
-  --motion-easing: ${motion.easing};
+  --font-display: ${safeFont(typography.display, 'typography.display')};
+  --font-body: ${safeFont(typography.body, 'typography.body')};
+  --font-mono: ${safeFont(typography.mono, 'typography.mono')};
+  --space-base: ${safeCssValue(spacing.base, 'spacing.base')};
+  --radius-control: ${safeCssValue(radii.control, 'radii.control')};
+  --radius-card: ${safeCssValue(radii.card, 'radii.card')};
+  --radius-panel: ${safeCssValue(radii.panel, 'radii.panel')};
+  --motion-micro: ${safeCssValue(motion.micro, 'motion.micro')};
+  --motion-short: ${safeCssValue(motion.short, 'motion.short')};
+  --motion-medium: ${safeCssValue(motion.medium, 'motion.medium')};
+  --motion-easing: ${safeCssValue(motion.easing, 'motion.easing')};
 }
 `;
   }
 
+  function toStyleSpec(data) {
+    const byId = Object.fromEntries(data.promptSections.map((section) => [section.id, section]));
+    const sectionMap = {
+      visualIntent: 'visual-north-star',
+      layout: 'layout-responsive',
+      color: 'design-tokens',
+      typography: 'design-tokens',
+      spacing: 'design-tokens',
+      surfaces: 'component-grammar',
+      components: 'component-grammar',
+      imagery: 'content-imagery',
+      iconography: 'component-grammar',
+      responsiveness: 'layout-responsive',
+      interactions: 'interaction-motion',
+      motion: 'interaction-motion',
+      accessibility: 'accessibility',
+      content: 'content-imagery',
+      constraints: 'negative-constraints',
+    };
+    const sourceKind = data.meta.sourceType === 'url' ? 'url' : 'image';
+    const evidenceLabel = (status) => {
+      if (status === 'user') return 'user';
+      if (status === 'computed') return 'derived';
+      if (status === 'observed') return sourceKind === 'url' ? 'dom' : 'screenshot';
+      return 'visual-model';
+    };
+    const sections = Object.fromEntries(Object.entries(sectionMap).map(([name, promptId]) => {
+      const prompt = byId[promptId];
+      const status = String(prompt?.evidenceType || 'unknown').toLowerCase();
+      const unknown = status === 'unknown';
+      return [name, {
+        status,
+        confidence: prompt?.confidence === 'high' ? 0.92 : prompt?.confidence === 'medium' ? 0.72 : 0.35,
+        evidence: unknown ? [] : [{ label: evidenceLabel(status), ref: `web-evidence://${data.meta.sourceType}/${promptId}` }],
+        summary: prompt?.content || 'No rule was generated.',
+        ...(unknown ? { unknownReason: prompt?.content || 'The source does not expose this information.' } : {}),
+      }];
+    }));
+    const numbers = (values) => Object.fromEntries(values.map((value, index) => [`step${index + 1}`, Number.parseFloat(value)]).filter(([, value]) => Number.isFinite(value)));
+    const family = (value) => String(value || '').split(' · ')[0].trim();
+    return {
+      schemaVersion: '1.0',
+      metadata: {
+        title: data.meta.title,
+        rightsMode: data.meta.mode === 'rebuild' ? 'authorized-reconstruction' : 'style-only',
+      },
+      source: { kind: sourceKind, ref: data.meta.sourceUrl },
+      tokens: {
+        colors: { ...data.tokens.colors },
+        spacing: { unit: Number.parseFloat(data.tokens.spacing.base) || 4, ...numbers(data.tokens.spacing.scale) },
+        radii: Object.fromEntries(Object.entries(data.tokens.radii).map(([key, value]) => [key, Number.parseFloat(value)])),
+        typography: {
+          fontFamilies: {
+            display: family(data.tokens.typography.display),
+            body: family(data.tokens.typography.body),
+            mono: family(data.tokens.typography.mono),
+          },
+          fontSizes: numbers(data.tokens.typography.scale.map((value) => String(value).split('/')[0])),
+        },
+        durations: Object.fromEntries(Object.entries(data.tokens.motion).filter(([key]) => key !== 'easing').map(([key, value]) => [key, Number.parseFloat(value)])),
+        easing: { standard: data.tokens.motion.easing },
+      },
+      sections,
+    };
+  }
+
   function createExport(format, data) {
-    if (format === 'json') return JSON.stringify(data, null, 2);
+    if (format === 'json') return JSON.stringify(toStyleSpec(data), null, 2);
     if (format === 'markdown') return createMarkdown(data);
     if (format === 'css') return createCss(data);
     throw new Error(`Unsupported export format: ${format}`);
@@ -144,7 +470,43 @@ ${colorLines}
   }
 
   function cloneSample() {
-    return JSON.parse(JSON.stringify(root.UI_TO_PROMPT_SAMPLE));
+    return clone(root.UI_TO_PROMPT_SAMPLE);
+  }
+
+  async function inspectImageFile(file) {
+    if (!file || typeof file.size !== 'number') throw new Error('请选择可读取的图片文件。');
+    if (file.size > 20 * 1024 * 1024) throw new Error('图片超过 20MB，请先压缩后再分析。');
+    if (typeof root.createImageBitmap !== 'function') throw new Error('当前浏览器不支持本地图片分析。');
+    const bitmap = await root.createImageBitmap(file);
+    try {
+      if (!bitmap.width || !bitmap.height) throw new Error('图片尺寸无效。');
+      if (bitmap.width * bitmap.height > 40_000_000) throw new Error('图片像素超过 4000 万，请先缩小后再分析。');
+      const longest = Math.max(bitmap.width, bitmap.height);
+      const scale = Math.min(1, 192 / longest);
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = root.document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('无法创建像素分析画布。');
+      context.drawImage(bitmap, 0, 0, width, height);
+      const pixels = context.getImageData(0, 0, width, height).data;
+      const buckets = new Map();
+      for (let index = 0; index < pixels.length; index += 16) {
+        if (pixels[index + 3] < 160) continue;
+        const channels = [pixels[index], pixels[index + 1], pixels[index + 2]].map((channel) => Math.min(255, Math.round(channel / 32) * 32));
+        const color = `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+        buckets.set(color, (buckets.get(color) || 0) + 1);
+      }
+      const colors = [...buckets.entries()]
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 12)
+        .map(([color]) => color);
+      return { width: bitmap.width, height: bitmap.height, colors };
+    } finally {
+      bitmap.close?.();
+    }
   }
 
   function init() {
@@ -180,6 +542,11 @@ ${colorLines}
     function activateWorkspace(tabId) {
       const buttons = $$('[data-workspace-tab]');
       updateSelection(buttons, tabId, 'workspaceTab');
+      const activeButton = buttons.find((button) => button.dataset.workspaceTab === tabId);
+      const tabs = activeButton?.parentElement;
+      if (tabs && tabs.scrollWidth > tabs.clientWidth) {
+        activeButton.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
+      }
       $$('[data-workspace-panel]').forEach((panel) => {
         panel.hidden = panel.dataset.workspacePanel !== tabId;
       });
@@ -284,13 +651,45 @@ ${colorLines}
       setStatus(
         useExample
           ? '正在载入完整示例分析。'
-          : '静态原型不会上传文件；下面演示相同输入的分析与导出结构。',
+          : activeSource === 'url'
+            ? '正在安全浏览公开网页并读取可见证据。'
+            : '正在浏览器本地读取像素；图片不会上传。',
         'neutral',
       );
       $('#analysis-panel').scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
 
       const stageElements = $$('.analysis-stage');
       const delay = prefersReducedMotion() ? 0 : 240;
+      const analyzeButton = $('#analyze-button');
+      analyzeButton.disabled = true;
+      if (!useExample) {
+        stageElements[0].dataset.state = 'active';
+        try {
+          if (activeSource === 'url') {
+            const rawValue = $('#source-url').value.trim();
+            const url = new URL(/^https?:\/\//i.test(rawValue) ? rawValue : `https://${rawValue}`).href;
+            const response = await fetch('/api/analyze-url', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `网页分析失败（HTTP ${response.status}）。`);
+            currentData = buildUrlDataset(payload, sample, mode);
+          } else {
+            const file = $(`#${activeSource}-file`).files[0];
+            const evidence = await inspectImageFile(file);
+            currentData = buildImageDataset(evidence, sample, { sourceType: activeSource, filename: file.name, mode });
+          }
+        } catch (error) {
+          stageElements[0].dataset.state = 'error';
+          const message = error instanceof Error ? error.message : '分析失败，请检查输入后重试。';
+          $('#analysis-current').textContent = message;
+          setStatus(message, 'error');
+          analyzeButton.disabled = false;
+          return;
+        }
+      }
       for (let index = 0; index < stageElements.length; index += 1) {
         stageElements[index].dataset.state = 'active';
         $('#analysis-current').textContent = stages[index].copy;
@@ -300,7 +699,8 @@ ${colorLines}
 
       renderWorkspace(currentData);
       $('#workspace').hidden = false;
-      setStatus('分析结构已就绪：观察、计算、推断与未知内容已分开。', 'success');
+      setStatus(useExample ? '示例分析已载入。' : '真实输入已完成分析：证据、推断与未知内容已分开。', 'success');
+      analyzeButton.disabled = false;
       $('#workspace-title').focus({ preventScroll: true });
       $('#workspace').scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
     }
@@ -311,7 +711,7 @@ ${colorLines}
 
     function renderWorkspace(data) {
       $('#project-title').textContent = data.meta.title;
-      $('#project-source').textContent = `${data.meta.sourceLabel} · ${data.meta.viewport}`;
+      $('#project-source').textContent = `${data.meta.sourceLabel} · ${data.meta.sourceUrl} · ${data.meta.viewport}`;
       $('#capture-time').textContent = data.meta.capturedAt;
 
       $('#evidence-summary').innerHTML = Object.entries(data.evidenceSummary)
@@ -601,9 +1001,12 @@ ${colorLines}
   }
 
   return {
+    buildImageDataset,
+    buildUrlDataset,
     comparisonPosition,
     createAnalysisStages,
     createExport,
+    inspectImageFile,
     init,
     modeNotice,
     safeFilename,

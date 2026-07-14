@@ -5,6 +5,7 @@
 ### visualIntent
 Status: INFERRED
 Confidence: 88%
+Evidence: [user] example://style-only-intent; [visual-model] example://editorial-composition
 Directive: Create a warm editorial evidence workspace that feels precise, inspectable, and actively composed rather than magically generated.
 Structured details:
 ```json
@@ -31,11 +32,13 @@ Resolve conflicts in this order: exact-context browser facts; matching screensho
 ### color
 Status: COMPUTED
 Confidence: 99%
+Evidence: [derived] example://palette-clusters
 Directive: Keep a warm neutral foundation with black ink, one cobalt action color, and a sparse lime evidence signal.
 
 ### typography
 Status: INFERRED
 Confidence: 76%
+Evidence: [screenshot] example://type-hierarchy
 Directive: Use a compact grotesk display face, a highly legible UI sans, and a mono face for provenance and machine evidence.
 Structured details:
 ```json
@@ -101,6 +104,7 @@ Structured details:
 ### layout
 Status: OBSERVED
 Confidence: 94%
+Evidence: [screenshot] example://desktop-layout
 Directive: Use an asymmetric twelve-column editorial grid with a strict workbench grid after analysis begins.
 Structured details:
 ```json
@@ -113,6 +117,7 @@ Structured details:
 ### responsiveness
 Status: INFERRED
 Confidence: 66%
+Evidence: [screenshot] example://desktop-layout; [screenshot] example://mobile-layout
 Directive: Collapse the hero and workspace to one column below 760 pixels; keep tabs horizontally scrollable and move dense comparison into a full-width panel.
 Structured details:
 ```json
@@ -126,11 +131,13 @@ Structured details:
 ### components
 Status: INFERRED
 Confidence: 85%
+Evidence: [screenshot] example://component-repetition; [visual-model] example://component-grammar
 Directive: Compose controls from an index, functional label, evidence class, primary content, and an explicit action or state.
 
 ### iconography
 Status: INFERRED
 Confidence: 74%
+Evidence: [screenshot] example://arrow-and-status-marks
 Directive: Use sparse geometric arrows and status marks at a consistent optical weight; never substitute emoji.
 
 ## 9. Content density and imagery
@@ -138,11 +145,13 @@ Directive: Use sparse geometric arrows and status marks at a consistent optical 
 ### content
 Status: USER
 Confidence: 100%
+Evidence: [user] example://product-copy
 Directive: Use concrete Chinese product copy that explains evidence, confidence, limitations, and actions; avoid vague AI superlatives.
 
 ### imagery
 Status: TRANSLATED
 Confidence: 82%
+Evidence: [visual-model] example://editorial-reference
 Directive: Use real interface captures or locally drawn neutral canvases; avoid generic AI characters, glowing orbs, and empty gray placeholders.
 
 ## 10. Interaction and motion
@@ -150,11 +159,13 @@ Directive: Use real interface captures or locally drawn neutral canvases; avoid 
 ### interactions
 Status: OBSERVED
 Confidence: 90%
+Evidence: [dom] example://keyboard-and-tabs
 Directive: Make every source mode, rights choice, result tab, copy action, and export control keyboard reachable with a visible focus ring.
 
 ### motion
 Status: USER
 Confidence: 100%
+Evidence: [user] example://motion-direction
 Directive: Use 120–240ms causal transitions for capture, classification, validation, and export; remove movement when reduced motion is requested.
 
 ## 11. Accessibility and performance
@@ -162,6 +173,7 @@ Directive: Use 120–240ms causal transitions for capture, classification, valid
 ### accessibility
 Status: COMPUTED
 Confidence: 91%
+Evidence: [derived] example://contrast-check; [dom] example://semantic-structure
 Directive: Preserve semantic landmarks, labelled tabs, 4.5:1 body contrast, visible focus, non-color status cues, touch targets, reflow, and reduced motion.
 
 ## 12. Negative constraints
