@@ -1,0 +1,45 @@
+:root {
+  --ui-colors-canvas: #F4F1E8;
+  --ui-colors-surface: #FFFEFA;
+  --ui-colors-ink: #191A17;
+  --ui-colors-muted: #686A62;
+  --ui-colors-line: #D7D2C5;
+  --ui-colors-cobalt: #3157F5;
+  --ui-colors-signal: #DDF45A;
+  --ui-colors-coral: #F05A3C;
+  --ui-colors-success: #1E7A55;
+  --ui-spacing-unit: 4;
+  --ui-spacing-2xs: 8;
+  --ui-spacing-xs: 12;
+  --ui-spacing-sm: 16;
+  --ui-spacing-md: 24;
+  --ui-spacing-lg: 32;
+  --ui-spacing-xl: 48;
+  --ui-spacing-2xl: 72;
+  --ui-radii-control: 4;
+  --ui-radii-card: 8;
+  --ui-radii-panel: 14;
+  --ui-typography-fontfamilies-display: General Sans, Source Han Sans SC, sans-serif;
+  --ui-typography-fontfamilies-body: Instrument Sans, Source Han Sans SC, sans-serif;
+  --ui-typography-fontfamilies-mono: IBM Plex Mono, Cascadia Code, monospace;
+  --ui-typography-fontsizes-meta: 12;
+  --ui-typography-fontsizes-body: 16;
+  --ui-typography-fontsizes-subhead: 22;
+  --ui-typography-fontsizes-section: 38;
+  --ui-typography-fontsizes-hero: 72;
+  --ui-typography-fontweights-regular: 420;
+  --ui-typography-fontweights-medium: 550;
+  --ui-typography-fontweights-display: 650;
+  --ui-typography-letterspacing-meta: 0.08;
+  --ui-typography-letterspacing-display: -0.04;
+  --ui-typography-lineheights-body: 1.5;
+  --ui-typography-lineheights-display: 0.96;
+  --ui-shadows-floating-panel: 0 24px 64px rgb(25 26 23 / 0.10);
+  --ui-borders-hairline: 1px solid #D7D2C5;
+  --ui-borders-ink: 1px solid #191A17;
+  --ui-durations-micro: 120;
+  --ui-durations-short: 180;
+  --ui-durations-medium: 240;
+  --ui-easing-standard: cubic-bezier(.2,.8,.2,1);
+}
+

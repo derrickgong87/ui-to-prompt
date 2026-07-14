@@ -1,0 +1,289 @@
+{
+  "schemaVersion": "1.0",
+  "metadata": {
+    "title": "Atlas Notes editorial evidence workspace",
+    "rightsMode": "style-only"
+  },
+  "source": {
+    "kind": "image",
+    "ref": "brand-neutral authored example"
+  },
+  "tokens": {
+    "colors": {
+      "canvas": "#F4F1E8",
+      "surface": "#FFFEFA",
+      "ink": "#191A17",
+      "muted": "#686A62",
+      "line": "#D7D2C5",
+      "cobalt": "#3157F5",
+      "signal": "#DDF45A",
+      "coral": "#F05A3C",
+      "success": "#1E7A55"
+    },
+    "spacing": {
+      "unit": 4,
+      "2xs": 8,
+      "xs": 12,
+      "sm": 16,
+      "md": 24,
+      "lg": 32,
+      "xl": 48,
+      "2xl": 72
+    },
+    "radii": {
+      "control": 4,
+      "card": 8,
+      "panel": 14
+    },
+    "typography": {
+      "fontFamilies": {
+        "display": "General Sans, Source Han Sans SC, sans-serif",
+        "body": "Instrument Sans, Source Han Sans SC, sans-serif",
+        "mono": "IBM Plex Mono, Cascadia Code, monospace"
+      },
+      "fontSizes": {
+        "meta": 12,
+        "body": 16,
+        "subhead": 22,
+        "section": 38,
+        "hero": 72
+      },
+      "fontWeights": {
+        "regular": 420,
+        "medium": 550,
+        "display": 650
+      },
+      "letterSpacing": {
+        "meta": 0.08,
+        "display": -0.04
+      },
+      "lineHeights": {
+        "body": 1.5,
+        "display": 0.96
+      }
+    },
+    "shadows": {
+      "floating-panel": "0 24px 64px rgb(25 26 23 / 0.10)"
+    },
+    "borders": {
+      "hairline": "1px solid #D7D2C5",
+      "ink": "1px solid #191A17"
+    },
+    "durations": {
+      "micro": 120,
+      "short": 180,
+      "medium": 240
+    },
+    "easing": {
+      "standard": "cubic-bezier(.2,.8,.2,1)"
+    }
+  },
+  "sections": {
+    "visualIntent": {
+      "status": "inferred",
+      "confidence": 0.88,
+      "evidence": [
+        {
+          "label": "visual-model",
+          "ref": "example://editorial-composition"
+        },
+        {
+          "label": "user",
+          "ref": "example://style-only-intent"
+        }
+      ],
+      "summary": "Create a warm editorial evidence workspace that feels precise, inspectable, and actively composed rather than magically generated.",
+      "details": {
+        "invariants": [
+          "Warm paper is the default canvas; white is reserved for focused work surfaces.",
+          "Cobalt communicates action and selection; signal lime is limited to evidence marks.",
+          "Structure comes from typography and rules, not glass effects or stacked shadows.",
+          "Every inference exposes its confidence and source class."
+        ]
+      }
+    },
+    "layout": {
+      "status": "observed",
+      "confidence": 0.94,
+      "evidence": [
+        {
+          "label": "screenshot",
+          "ref": "example://desktop-layout"
+        }
+      ],
+      "summary": "Use an asymmetric twelve-column editorial grid with a strict workbench grid after analysis begins.",
+      "details": {
+        "desktop": "4/8 hero split",
+        "workspace": "summary header, tab rail, focused panel"
+      }
+    },
+    "color": {
+      "status": "computed",
+      "confidence": 0.99,
+      "evidence": [
+        {
+          "label": "derived",
+          "ref": "example://palette-clusters"
+        }
+      ],
+      "summary": "Keep a warm neutral foundation with black ink, one cobalt action color, and a sparse lime evidence signal."
+    },
+    "typography": {
+      "status": "inferred",
+      "confidence": 0.76,
+      "evidence": [
+        {
+          "label": "screenshot",
+          "ref": "example://type-hierarchy"
+        }
+      ],
+      "summary": "Use a compact grotesk display face, a highly legible UI sans, and a mono face for provenance and machine evidence.",
+      "details": {
+        "fallback": "Use open-source substitutes with similar width and x-height; record substitutions."
+      }
+    },
+    "spacing": {
+      "status": "computed",
+      "confidence": 0.96,
+      "evidence": [
+        {
+          "label": "derived",
+          "ref": "example://spacing-clusters"
+        }
+      ],
+      "summary": "Use a four-pixel base with deliberate 8, 12, 16, 24, 32, 48, and 72 pixel steps."
+    },
+    "surfaces": {
+      "status": "observed",
+      "confidence": 0.93,
+      "evidence": [
+        {
+          "label": "screenshot",
+          "ref": "example://surface-sample"
+        }
+      ],
+      "summary": "Separate surfaces with fine rules, paper tone, and only one elevated panel shadow; use 4, 8, and 14 pixel radii."
+    },
+    "components": {
+      "status": "inferred",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "label": "screenshot",
+          "ref": "example://component-repetition"
+        },
+        {
+          "label": "visual-model",
+          "ref": "example://component-grammar"
+        }
+      ],
+      "summary": "Compose controls from an index, functional label, evidence class, primary content, and an explicit action or state."
+    },
+    "imagery": {
+      "status": "translated",
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "label": "visual-model",
+          "ref": "example://editorial-reference"
+        }
+      ],
+      "summary": "Use real interface captures or locally drawn neutral canvases; avoid generic AI characters, glowing orbs, and empty gray placeholders."
+    },
+    "iconography": {
+      "status": "inferred",
+      "confidence": 0.74,
+      "evidence": [
+        {
+          "label": "screenshot",
+          "ref": "example://arrow-and-status-marks"
+        }
+      ],
+      "summary": "Use sparse geometric arrows and status marks at a consistent optical weight; never substitute emoji."
+    },
+    "responsiveness": {
+      "status": "inferred",
+      "confidence": 0.66,
+      "evidence": [
+        {
+          "label": "screenshot",
+          "ref": "example://desktop-layout"
+        },
+        {
+          "label": "screenshot",
+          "ref": "example://mobile-layout"
+        }
+      ],
+      "summary": "Collapse the hero and workspace to one column below 760 pixels; keep tabs horizontally scrollable and move dense comparison into a full-width panel.",
+      "details": {
+        "boundary": "The exact source breakpoints are not claimed; 760px is an authored implementation rule."
+      }
+    },
+    "interactions": {
+      "status": "observed",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "label": "dom",
+          "ref": "example://keyboard-and-tabs"
+        }
+      ],
+      "summary": "Make every source mode, rights choice, result tab, copy action, and export control keyboard reachable with a visible focus ring."
+    },
+    "motion": {
+      "status": "user",
+      "confidence": 1,
+      "evidence": [
+        {
+          "label": "user",
+          "ref": "example://motion-direction"
+        }
+      ],
+      "summary": "Use 120–240ms causal transitions for capture, classification, validation, and export; remove movement when reduced motion is requested."
+    },
+    "accessibility": {
+      "status": "computed",
+      "confidence": 0.91,
+      "evidence": [
+        {
+          "label": "derived",
+          "ref": "example://contrast-check"
+        },
+        {
+          "label": "dom",
+          "ref": "example://semantic-structure"
+        }
+      ],
+      "summary": "Preserve semantic landmarks, labelled tabs, 4.5:1 body contrast, visible focus, non-color status cues, touch targets, reflow, and reduced motion."
+    },
+    "content": {
+      "status": "user",
+      "confidence": 1,
+      "evidence": [
+        {
+          "label": "user",
+          "ref": "example://product-copy"
+        }
+      ],
+      "summary": "Use concrete Chinese product copy that explains evidence, confidence, limitations, and actions; avoid vague AI superlatives."
+    },
+    "constraints": {
+      "status": "user",
+      "confidence": 1,
+      "evidence": [
+        {
+          "label": "user",
+          "ref": "example://rights-and-taste-constraints"
+        }
+      ],
+      "summary": "Do not copy source branding, text, images, or protected assets. Do not use purple gradients, glassmorphism, generic SaaS card rows, robots, or unverified pixel-perfect claims.",
+      "details": {
+        "acceptance": [
+          "Verify 1440x960, 1024x768, and 390x844 layouts.",
+          "Verify keyboard focus, reduced motion, evidence labels, and export contents.",
+          "Keep the StyleSpec schema and Skill copy identical."
+        ]
+      }
+    }
+  }
+}
