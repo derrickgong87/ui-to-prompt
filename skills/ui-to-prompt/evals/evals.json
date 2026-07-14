@@ -1,0 +1,23 @@
+{
+  "skill_name": "ui-to-prompt",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Analyze this public marketing URL and turn its visual system into a systematic prompt and reusable Codex Skill. Do not copy its branding or source text.",
+      "expected_output": "A validated StyleSpec, 15-section systematic prompt, evidence report, tokens, and generated style Skill with URL facts separated from inference.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I only have one desktop screenshot. Extract the UI style for Claude Code, but be honest about what cannot be known from the image.",
+      "expected_output": "An image-evidence package whose typography family, DOM, breakpoints, hidden states, and motion remain explicit unknowns.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Turn this editorial poster into a reusable web-app visual style. Keep the mood and composition principles, not the poster artwork or copy.",
+      "expected_output": "Translated visual principles and UI tokens marked as translated, plus rights-safe negative constraints and acceptance targets.",
+      "files": []
+    }
+  ]
+}

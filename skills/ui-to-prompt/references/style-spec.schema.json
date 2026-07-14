@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uitoprompt.com/schemas/style-spec-1.0.0.json",
+  "title": "UItoPrompt StyleSpec",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "metadata",
+    "provenance",
+    "visual_principles",
+    "design_tokens",
+    "layout",
+    "components",
+    "responsive_rules",
+    "interaction_motion",
+    "accessibility",
+    "negative_constraints",
+    "uncertainties",
+    "acceptance_targets"
+  ],
+  "$defs": {
+    "evidenceValue": {
+      "type": "object",
+      "required": ["value", "status", "confidence", "evidence"],
+      "properties": {
+        "value": {},
+        "status": {
+          "enum": ["observed", "computed", "inferred", "translated", "user", "unknown"]
+        },
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+        "alternatives": {"type": "array"},
+        "resolution": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "metadata": {"type": "object"},
+    "provenance": {"type": "object"},
+    "visual_principles": {"type": "array", "items": {"$ref": "#/$defs/evidenceValue"}},
+    "design_tokens": {"type": "object"},
+    "layout": {"type": "array"},
+    "components": {"type": "array"},
+    "responsive_rules": {"type": "array"},
+    "interaction_motion": {"type": "array"},
+    "accessibility": {"type": "array"},
+    "negative_constraints": {"type": "array", "items": {"type": "string"}},
+    "uncertainties": {"type": "array"},
+    "acceptance_targets": {"type": "array", "items": {"type": "string"}}
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "UItoPrompt"
+  short_description: "Turn visual references into evidence-backed design prompts."
+  default_prompt: "Use $ui-to-prompt to turn this webpage or image into a systematic design prompt and reusable style Skill."
