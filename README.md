@@ -285,7 +285,7 @@ User-supplied webpages are hostile input. UItoPrompt therefore:
 
 Read [`SECURITY.md`](./SECURITY.md) before exposing URL capture to untrusted users.
 
-> **Deployment boundary:** the source release is public, but the hosted multi-tenant service is not live yet. Deployment to `uitoprompt.com` is gated on a trusted outbound-network sandbox that closes DNS-rebinding paths and on public rate limiting. Local review use is the current supported mode.
+> **Deployment boundary:** the production container, server-side Gemini path, and Cloud Run manifest are ready, but `uitoprompt.com` has not completed DNS cutover. The public hosted version starts with image analysis; arbitrary webpage capture stays disabled until a separate worker, queue, controlled egress, and public rate limits are deployed and verified.
 
 ## Verification
 
