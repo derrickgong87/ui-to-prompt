@@ -8,7 +8,7 @@ Security fixes target the current `main` branch until the first stable release d
 
 ## Report a vulnerability
 
-Please use GitHub's private security advisory flow after the repository is published. Do not include credentials, private pages, personal data, or an exploit against a third-party site in a public issue.
+Please use GitHub's private security advisory flow. Do not include credentials, private pages, personal data, or an exploit against a third-party site in a public issue.
 
 ## URL capture boundaries
 

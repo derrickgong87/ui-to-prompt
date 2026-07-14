@@ -5,6 +5,14 @@
   "type": "module",
   "private": false,
   "license": "MIT",
+  "homepage": "https://github.com/derrickgong87/ui-to-prompt#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/derrickgong87/ui-to-prompt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/derrickgong87/ui-to-prompt/issues"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -24,5 +32,6 @@
     "ai-skill",
     "web-forensics",
     "ui-analysis"
-  ]
+  ],
+  "author": "Derrick Gong and contributors"
 }
