@@ -11,6 +11,14 @@ import {
 
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
+test('page capture bounds collections before copying attributes or asset nodes', async () => {
+  const source = await readFile(new URL('../packages/core/url-evidence.mjs', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(source, /\[\.\.\.element\.attributes\]/);
+  assert.doesNotMatch(source, /\[\.\.\.globalThis\.document\.querySelectorAll\(['"]img, video, source/);
+  assert.match(source, /element\.attributes\[index\]/);
+});
+
 test('normalizes collector output into deterministic observed URL evidence', () => {
   const evidence = normalizeUrlEvidence(
     {

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   exportCssVariables,
@@ -12,6 +13,17 @@ import {
 } from '../packages/core/prompt-compiler.mjs';
 
 const evidence = (label, ref) => ({ label, ref });
+
+test('canonical JSON Schema rejects whitespace-only required strings', async () => {
+  const schema = JSON.parse(await readFile(new URL('../packages/core/style-spec.schema.json', import.meta.url), 'utf8'));
+
+  assert.equal(schema.properties.metadata.properties.title.pattern, '\\S');
+  assert.equal(schema.properties.source.properties.ref.pattern, '\\S');
+  assert.equal(schema.$defs.evidence.properties.ref.pattern, '\\S');
+  assert.equal(schema.$defs.section.properties.summary.pattern, '\\S');
+  assert.equal(schema.$defs.section.properties.unknownReason.pattern, '\\S');
+  assert.equal(schema.$defs.tokenValue.oneOf[0].pattern, '\\S');
+});
 
 function section(summary, details = {}) {
   return {

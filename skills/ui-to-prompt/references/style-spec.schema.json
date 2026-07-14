@@ -17,7 +17,8 @@
       "properties": {
         "title": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "rightsMode": {
           "enum": ["style-only", "authorized-reconstruction"]
@@ -34,7 +35,8 @@
         },
         "ref": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         }
       }
     },
@@ -86,6 +88,7 @@
         {
           "type": "string",
           "minLength": 1,
+          "pattern": "\\S",
           "not": {
             "pattern": "[;{}\\u0000-\\u001F]|/\\*|\\*/|(?:[uU][rR][lL]|[eE][xX][pP][rR][eE][sS][sS][iI][oO][nN])\\s*\\(|@[iI][mM][pP][oO][rR][tT]"
           }
@@ -146,7 +149,8 @@
         },
         "ref": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "note": {
           "type": "string"
@@ -172,7 +176,8 @@
         },
         "summary": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "details": {
           "oneOf": [
@@ -182,7 +187,8 @@
         },
         "unknownReason": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         }
       },
       "allOf": [

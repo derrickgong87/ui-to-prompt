@@ -253,3 +253,16 @@ test('mobile result navigation exposes StyleSpec, centers the active tab and kee
   assert.match(css, /\.source-tabs button,[\s\S]*?min-height:\s*44px/);
   assert.match(css, /\.site-nav a[\s\S]*?min-height:\s*44px/);
 });
+
+test('image dimensions are rejected from bounded headers before browser decode', async () => {
+  const app = loadClassicScript('app.js');
+  const appSource = await source('app.js');
+  const png = new Uint8Array(24);
+  png.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  const view = new DataView(png.buffer);
+  view.setUint32(16, 12000);
+  view.setUint32(20, 8000);
+
+  assert.deepEqual({ ...app.parseImageDimensions(png) }, { width: 12000, height: 8000, format: 'png' });
+  assert.match(appSource, /await readImageDimensions\(file\)[\s\S]*?createImageBitmap\(file\)/);
+});

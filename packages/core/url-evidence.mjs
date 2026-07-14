@@ -343,13 +343,18 @@ async function collectPageSnapshot(page, limits) {
         const element = nodeList[index];
         const rect = element.getBoundingClientRect();
         const style = globalThis.getComputedStyle(element);
+        const attributeCount = Math.min(
+          element.attributes.length,
+          captureLimits.attributesPerElement,
+        );
         const attributes = Object.fromEntries(
-          [...element.attributes]
-            .slice(0, captureLimits.attributesPerElement)
-            .map((attribute) => [
+          Array.from({ length: attributeCount }, (_, index) => {
+            const attribute = element.attributes[index];
+            return [
               attribute.name.slice(0, captureLimits.attributeCharacters),
               attribute.value.slice(0, captureLimits.attributeCharacters),
-            ]),
+            ];
+          }),
         );
         let directText = '';
         for (const node of element.childNodes) {
@@ -386,12 +391,15 @@ async function collectPageSnapshot(page, limits) {
       },
     );
 
-    const assetNodes = [...globalThis.document.querySelectorAll('img, video, source')];
+    const assetNodes = globalThis.document.querySelectorAll('img, video, source');
     if (assetNodes.length > captureLimits.assets) {
       warnings.push(`Assets were truncated at ${captureLimits.assets}.`);
     }
-    const assets = assetNodes.slice(0, captureLimits.assets).map(
-      (element, index) => ({
+    const assets = Array.from(
+      { length: Math.min(assetNodes.length, captureLimits.assets) },
+      (_, index) => {
+        const element = assetNodes[index];
+        return {
         id: `asset-${index + 1}`,
         type: element.tagName.toLowerCase(),
         url:
@@ -410,7 +418,8 @@ async function collectPageSnapshot(page, limits) {
         width: element.naturalWidth || element.videoWidth || element.width || null,
         height:
           element.naturalHeight || element.videoHeight || element.height || null,
-      }),
+        };
+      },
     );
 
     const pageAnimations = globalThis.document.getAnimations();

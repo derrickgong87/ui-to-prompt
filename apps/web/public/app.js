@@ -473,10 +473,71 @@ ${colorLines}
     return clone(root.UI_TO_PROMPT_SAMPLE);
   }
 
+  function parseImageDimensions(input) {
+    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (
+      bytes.length >= 24 &&
+      [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => bytes[index] === value)
+    ) {
+      return { width: view.getUint32(16), height: view.getUint32(20), format: 'png' };
+    }
+    if (bytes.length >= 12 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+      const startOfFrame = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+      let offset = 2;
+      while (offset + 8 < bytes.length) {
+        while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+        const marker = bytes[offset];
+        offset += 1;
+        if (marker === 0xd9 || marker === 0xda) break;
+        if (offset + 2 > bytes.length) break;
+        const length = view.getUint16(offset);
+        if (length < 2 || offset + length > bytes.length) break;
+        if (startOfFrame.has(marker) && length >= 7) {
+          return { width: view.getUint16(offset + 5), height: view.getUint16(offset + 3), format: 'jpeg' };
+        }
+        offset += length;
+      }
+    }
+    const ascii = (start, length) => String.fromCharCode(...bytes.slice(start, start + length));
+    if (bytes.length >= 30 && ascii(0, 4) === 'RIFF' && ascii(8, 4) === 'WEBP') {
+      const chunk = ascii(12, 4);
+      if (chunk === 'VP8X') {
+        const width = 1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16);
+        const height = 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16);
+        return { width, height, format: 'webp' };
+      }
+      if (chunk === 'VP8L' && bytes[20] === 0x2f) {
+        const width = 1 + bytes[21] + ((bytes[22] & 0x3f) << 8);
+        const height = 1 + ((bytes[22] & 0xc0) >> 6) + (bytes[23] << 2) + ((bytes[24] & 0x0f) << 10);
+        return { width, height, format: 'webp' };
+      }
+      if (chunk === 'VP8 ' && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
+        return {
+          width: view.getUint16(26, true) & 0x3fff,
+          height: view.getUint16(28, true) & 0x3fff,
+          format: 'webp',
+        };
+      }
+    }
+    throw new Error('无法从图片头部安全读取尺寸；请转换为标准 PNG、JPEG 或 WebP 后重试。');
+  }
+
+  async function readImageDimensions(file) {
+    const header = new Uint8Array(await file.slice(0, Math.min(file.size, 1024 * 1024)).arrayBuffer());
+    const dimensions = parseImageDimensions(header);
+    if (!dimensions.width || !dimensions.height) throw new Error('图片尺寸无效。');
+    return dimensions;
+  }
+
   async function inspectImageFile(file) {
     if (!file || typeof file.size !== 'number') throw new Error('请选择可读取的图片文件。');
     if (file.size > 20 * 1024 * 1024) throw new Error('图片超过 20MB，请先压缩后再分析。');
     if (typeof root.createImageBitmap !== 'function') throw new Error('当前浏览器不支持本地图片分析。');
+    const declaredDimensions = await readImageDimensions(file);
+    if (declaredDimensions.width * declaredDimensions.height > 40_000_000) {
+      throw new Error('图片像素超过 4000 万，请先缩小后再分析。');
+    }
     const bitmap = await root.createImageBitmap(file);
     try {
       if (!bitmap.width || !bitmap.height) throw new Error('图片尺寸无效。');
@@ -1009,6 +1070,7 @@ ${colorLines}
     inspectImageFile,
     init,
     modeNotice,
+    parseImageDimensions,
     safeFilename,
     selectOne,
   };
