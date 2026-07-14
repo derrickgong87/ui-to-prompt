@@ -60,6 +60,7 @@ test('runtime config requires an explicit public origin in production and never 
   assert.equal(config.publicOrigin, 'https://uitoprompt.com');
   assert.equal(config.geminiApiKey, 'secret');
   assert.equal(config.urlAnalysisEnabled, false);
+  assert.equal(config.geminiTimeoutMs, 60_000);
   assert.doesNotMatch(JSON.stringify(config.public), /secret/);
 });
 

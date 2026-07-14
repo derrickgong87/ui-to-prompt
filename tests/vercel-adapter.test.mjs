@@ -19,7 +19,7 @@ test('Vercel target stages only public assets and exposes server-side image and 
   const config = JSON.parse(readFileSync(configFile, 'utf8'));
   assert.equal(config.outputDirectory, 'dist/vercel-public');
   assert.equal(config.buildCommand, 'node scripts/build-vercel.mjs');
-  assert.equal(config.functions['api/analyze-image.mjs'].maxDuration, 30);
+  assert.equal(config.functions['api/analyze-image.mjs'].maxDuration, 60);
 
   const functionSource = readFileSync(imageFunction, 'utf8');
   assert.match(functionSource, /analyzeGeminiImage/);

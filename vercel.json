@@ -3,7 +3,7 @@
   "buildCommand": "node scripts/build-vercel.mjs",
   "outputDirectory": "dist/vercel-public",
   "functions": {
-    "api/analyze-image.mjs": { "maxDuration": 30 }
+    "api/analyze-image.mjs": { "maxDuration": 60 }
   },
   "headers": [
     {

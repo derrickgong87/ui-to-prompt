@@ -28,7 +28,7 @@ spec:
             - name: GEMINI_MODEL
               value: gemini-3.5-flash
             - name: GEMINI_TIMEOUT_MS
-              value: "30000"
+              value: "60000"
             - name: MAX_IMAGE_BYTES
               value: "3145728"
             - name: MAX_IMAGE_PIXELS
