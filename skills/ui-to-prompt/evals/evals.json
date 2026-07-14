@@ -3,21 +3,42 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "Analyze this public marketing URL and turn its visual system into a systematic prompt and reusable Codex Skill. Do not copy its branding or source text.",
+      "prompt": "Analyze the public page https://example.com/ in style-only mode and turn its visual system into a systematic prompt and reusable Codex Skill. Do not copy branding or source text. Save the complete package to the requested output directory.",
       "expected_output": "A validated StyleSpec, 15-section systematic prompt, evidence report, tokens, and generated style Skill with URL facts separated from inference.",
-      "files": []
+      "files": [],
+      "expectations": [
+        "The run creates non-empty style-spec.json, systematic-prompt.md, evidence-report.md, variables.css, and generated-style-skill/SKILL.md files.",
+        "style-spec.json validates against the UItoPrompt 1.0 contract and uses metadata.rightsMode style-only.",
+        "systematic-prompt.md contains all 15 canonical sections in order.",
+        "The output distinguishes browser or page facts from inference and does not claim unsupported responsive, interaction, or motion facts.",
+        "The generated package excludes source branding and source copy and includes explicit negative constraints."
+      ]
     },
     {
       "id": 2,
-      "prompt": "I only have one desktop screenshot. Extract the UI style for Claude Code, but be honest about what cannot be known from the image.",
+      "prompt": "I only have the supplied desktop screenshot. Extract the UI style for Claude Code, save a complete prompt package, and be honest about what cannot be known from one image.",
       "expected_output": "An image-evidence package whose typography family, DOM, breakpoints, hidden states, and motion remain explicit unknowns.",
-      "files": []
+      "files": ["C:/Users/HUAWEI/Documents/Codex/2026-07-14/prompt-systematic-prompt-1-a-sub/work/playwright/landing-desktop.png"],
+      "expectations": [
+        "The run creates non-empty style-spec.json, systematic-prompt.md, evidence-report.md, variables.css, and generated-style-skill/SKILL.md files.",
+        "The output measures image dimensions or palette instead of presenting every visual claim as model inference.",
+        "Exact font family, DOM semantics, source breakpoints, hidden interaction states, and motion are explicit unknowns or authored fallbacks rather than claimed facts.",
+        "systematic-prompt.md contains all 15 canonical sections in order.",
+        "The output validates its StyleSpec before handoff and reports any remaining evidence boundary."
+      ]
     },
     {
       "id": 3,
-      "prompt": "Turn this editorial poster into a reusable web-app visual style. Keep the mood and composition principles, not the poster artwork or copy.",
+      "prompt": "Treat the supplied product screenshot as a general visual reference rather than a page to clone. Translate its editorial mood, rhythm, color roles, and geometry into a reusable web-app visual style package. Keep the principles, not the artwork or copy.",
       "expected_output": "Translated visual principles and UI tokens marked as translated, plus rights-safe negative constraints and acceptance targets.",
-      "files": []
+      "files": ["C:/Users/HUAWEI/Documents/Codex/2026-07-14/prompt-systematic-prompt-1-a-sub/work/playwright/result-mobile.png"],
+      "expectations": [
+        "At least one StyleSpec section is marked translated and cites visual-reference evidence.",
+        "The package converts composition, contrast, rhythm, texture, and shape into executable UI rules without claiming source DOM, breakpoints, or interaction facts.",
+        "The output explicitly excludes the reference artwork, copy, branding, and protected assets.",
+        "systematic-prompt.md contains all 15 canonical sections in order.",
+        "The generated style Skill is reusable beyond the supplied screenshot and explains how to handle unknowns."
+      ]
     }
   ]
 }
