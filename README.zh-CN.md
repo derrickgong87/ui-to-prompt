@@ -304,7 +304,7 @@ Invoke-Pester tests/PackageRelease.Tests.ps1
 
 - 60 项 Node 测试通过；
 - 8 项 Python Skill 脚本测试通过；
-- 1 项 PowerShell 打包测试通过；
+- 2 项 PowerShell 打包测试通过；
 - 桌面端、手机端、本地图片、真实 URL 浏览器流程通过；
 - Skill 配对评测：使用 Skill 时 15/15，通过基线为 9/15；
 - 生产依赖审计：0 个已知漏洞。

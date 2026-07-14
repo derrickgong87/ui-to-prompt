@@ -304,7 +304,7 @@ Latest local release audit:
 
 - 60 Node tests passed;
 - 8 Python Skill-script tests passed;
-- 1 PowerShell packaging test passed;
+- 2 PowerShell packaging tests passed;
 - desktop, mobile, local-image, and real-URL browser flows passed;
 - paired Skill evaluation: 15/15 rubric checks with the Skill versus 9/15 baseline;
 - production dependency audit: 0 known vulnerabilities.

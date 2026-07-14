@@ -1,6 +1,22 @@
 $ErrorActionPreference = 'Stop'
 
 Describe 'UItoPrompt release packaging' {
+    It 'supports the public no-argument package command' {
+        $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+        $output = Join-Path $repoRoot 'dist\ui-to-prompt-review.zip'
+
+        try {
+            Remove-Item -LiteralPath $output -Force -ErrorAction SilentlyContinue
+            & (Join-Path $PSScriptRoot '..\scripts\package-release.ps1')
+
+            (Test-Path -LiteralPath $output) | Should Be $true
+            ((Get-Item -LiteralPath $output).Length -gt 0) | Should Be $true
+        }
+        finally {
+            Remove-Item -LiteralPath $output -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'creates a non-empty review archive without dependencies or secrets' {
         $output = Join-Path $TestDrive 'ui-to-prompt-review.zip'
         $expanded = Join-Path $TestDrive 'expanded'

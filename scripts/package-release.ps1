@@ -1,10 +1,13 @@
 [CmdletBinding()]
 param(
-    [string]$OutputPath = (Join-Path $PSScriptRoot '..\..\outputs\ui-to-prompt-review.zip')
+    [string]$OutputPath
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+    $OutputPath = Join-Path $repoRoot 'dist\ui-to-prompt-review.zip'
+}
 $output = [IO.Path]::GetFullPath($OutputPath)
 $outputDirectory = Split-Path -Parent $output
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
