@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>URL evidence reference</title>
+    <style>
+      :root {
+        --ink: #161a22;
+        --paper: #f5f2ea;
+        --accent: #ff5a36;
+        --space: 1.25rem;
+        --radius: 1rem;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: var(--paper); font: 16px/1.5 system-ui; }
+      main { width: min(70rem, calc(100% - 2 * var(--space))); margin-inline: auto; }
+      [data-testid="hero"] { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space); padding-block: 5rem; }
+      h1 { max-width: 12ch; margin: 0; font-size: clamp(3rem, 8vw, 7rem); line-height: 0.9; letter-spacing: -0.06em; }
+      .card { align-self: end; padding: var(--space); border: 1px solid currentColor; border-radius: var(--radius); box-shadow: 0 1rem 3rem rgb(22 26 34 / 12%); }
+      a { color: inherit; text-decoration-thickness: 0.12em; transition: color 180ms ease, transform 180ms ease; }
+      a:hover { color: var(--accent); }
+      a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+      @media (max-width: 700px) { [data-testid="hero"] { grid-template-columns: 1fr; padding-block: 3rem; } }
+      @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section data-testid="hero" aria-labelledby="hero-title">
+        <h1 id="hero-title">Turn interfaces into evidence.</h1>
+        <article class="card">
+          <p>Stable content for deterministic extraction.</p>
+          <a href="#details">Explore details</a>
+        </article>
+      </section>
+      <section id="details" aria-label="Details"><p>Reference section.</p></section>
+    </main>
+  </body>
+</html>
