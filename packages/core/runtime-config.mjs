@@ -1,4 +1,4 @@
-const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+import { DEFAULT_GEMINI_MODEL } from './gemini-analysis.mjs';
 const DEFAULT_GEMINI_TIMEOUT_MS = 60_000;
 const DEFAULT_MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_PIXELS = 20_000_000;

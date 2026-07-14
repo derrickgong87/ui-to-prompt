@@ -4,6 +4,7 @@ export const GEMINI_NOT_CONFIGURED = 'GEMINI_NOT_CONFIGURED';
 export const GEMINI_TIMEOUT = 'GEMINI_TIMEOUT';
 export const GEMINI_OUTPUT_INVALID = 'GEMINI_OUTPUT_INVALID';
 export const GEMINI_PROVIDER_FAILURE = 'GEMINI_PROVIDER_FAILURE';
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 const MAX_SECTION_CHARS = 420;
 const MAX_TITLE_CHARS = 120;
@@ -132,7 +133,7 @@ async function loadGeminiClient(apiKey, loadClient) {
 
 export async function analyzeGeminiImage({
   apiKey,
-  model = 'gemini-flash-latest',
+  model = DEFAULT_GEMINI_MODEL,
   image,
   sourceRef = 'upload:local-image',
   rightsMode = 'style-only',
