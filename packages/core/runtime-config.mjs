@@ -32,7 +32,10 @@ function parseOrigin(value, { required = false } = {}) {
 
 export function readRuntimeConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
-  const publicOrigin = parseOrigin(env.PUBLIC_APP_ORIGIN, { required: production });
+  const vercelOrigin = env.VERCEL === '1' && typeof env.VERCEL_URL === 'string' && env.VERCEL_URL.trim()
+    ? `https://${env.VERCEL_URL.trim()}`
+    : undefined;
+  const publicOrigin = parseOrigin(env.PUBLIC_APP_ORIGIN ?? vercelOrigin, { required: production });
   const geminiModel = (env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL).trim();
   if (!geminiModel) throw new Error('GEMINI_MODEL must not be empty.');
 

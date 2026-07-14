@@ -45,6 +45,13 @@ test('runtime config requires an explicit public origin in production and never 
     /PUBLIC_APP_ORIGIN/i,
   );
 
+  const vercelConfig = readRuntimeConfig({
+    NODE_ENV: 'production',
+    VERCEL: '1',
+    VERCEL_URL: 'ui-to-prompt-example.vercel.app',
+  });
+  assert.equal(vercelConfig.publicOrigin, 'https://ui-to-prompt-example.vercel.app');
+
   const config = readRuntimeConfig({
     NODE_ENV: 'production',
     PUBLIC_APP_ORIGIN: 'https://uitoprompt.com/',
